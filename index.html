@@ -217,6 +217,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
     <button class="tbtn" onclick="toggleSidebar()">&#9776;</button>
     <button class="tbtn" onclick="clearChat()">&#x2715; Clear</button>
     <a class="tbtn" href="index.html">&#x2190; Home</a>
+    <button class="tbtn" onclick="document.getElementById('nxMFASettings').style.display='flex';nxMFALoadStatus();" title="Security &amp; MFA">&#x1F512; MFA</button>
     <button id="signInBtn" onclick="showAuth('up')">Get Access</button>
     <button id="userPill" onclick="signOut()"></button>
   </div>
@@ -534,7 +535,7 @@ function onSignedIn(user){
   _plan = plan;
   var name = (user.user_metadata && user.user_metadata.full_name)
     ? user.user_metadata.full_name.split(' ')[0] : user.email.split('@')[0];
-  document.getElementById('authWall').style.display = 'none';
+  nxMFACheck(r.data.session, function(){ document.getElementById('authWall').style.display = 'none'; });
   var pill = document.getElementById('userPill');
   pill.textContent = name;
   pill.style.display = 'inline-block';
@@ -1138,5 +1139,246 @@ function downloadChatWord(){
 // ─────────────────────────────────────────────────────────────────
 
 </script>
+<script>
+
+// ══════════════════════════════════════════════════════════════════
+// NexGen MFA Module — Corverxis Technologies
+// TOTP-based MFA via Supabase Auth (Google Authenticator / Authy)
+// ══════════════════════════════════════════════════════════════════
+(function(global) {
+  'use strict';
+
+  // ── MFA STATE ─────────────────────────────────────────────────
+  var _mfaPending  = null;  // pending session after password sign-in
+  var _mfaFactorId = null;  // enrolled factor id
+  var _mfaCallback = null;  // fn to call after successful MFA
+  var _sb          = null;
+
+  function sb() {
+    // reuse existing supabase client from the host page
+    if (window._sb)          return window._sb;
+    if (window.getSB)        return window.getSB();
+    if (window._nglSupabase) return window._nglSupabase;
+    if (window._consoleSB)   return window._consoleSB();
+    // fallback — create one
+    if (!_sb) _sb = supabase.createClient(
+      'https://bvwgqafekmfqpylsrteu.supabase.co',
+      'sb_publishable_giKFkcglGwHs2ezDp0UsKQ_tmZ3QJis'
+    );
+    return _sb;
+  }
+
+  // ── CHALLENGE FLOW ─────────────────────────────────────────────
+  // Called after password sign-in succeeds — check if MFA required
+  global.nxMFACheck = async function(session, onSuccess) {
+    _mfaCallback = onSuccess;
+    var r = await sb().auth.mfa.getAuthenticatorAssuranceLevel();
+    if (r.error) { if(onSuccess) onSuccess(session); return; }
+    var aal = r.data;
+    // If current level matches required level — no MFA needed
+    if (aal.currentLevel === aal.nextLevel) {
+      if(onSuccess) onSuccess(session);
+      return;
+    }
+    // MFA required — show challenge
+    var factors = await sb().auth.mfa.listFactors();
+    var totp = factors.data && factors.data.totp && factors.data.totp[0];
+    if (!totp) { if(onSuccess) onSuccess(session); return; }
+    _mfaFactorId = totp.id;
+    nxMFAShowChallenge();
+  };
+
+  global.nxMFAShowChallenge = function() {
+    var w = document.getElementById('nxMFAWall');
+    if (w) { w.style.display='flex'; }
+    var inp = document.getElementById('nxMFACode');
+    if (inp) { inp.value=''; inp.focus(); }
+    nxMFAErr('');
+  };
+
+  global.nxMFAVerify = async function() {
+    var code = (document.getElementById('nxMFACode')||{}).value.replace(/\s/g,'');
+    if (code.length !== 6 || isNaN(code)) { nxMFAErr('Enter the 6-digit code from your authenticator app'); return; }
+    var btn = document.getElementById('nxMFABtn');
+    if(btn){ btn.disabled=true; btn.textContent='Verifying\u2026'; }
+    // Create challenge then verify
+    var ch = await sb().auth.mfa.challenge({ factorId: _mfaFactorId });
+    if (ch.error) { nxMFAErr(ch.error.message||'Challenge failed'); if(btn){btn.disabled=false;btn.textContent='Verify Code \u2192';} return; }
+    var vr = await sb().auth.mfa.verify({ factorId:_mfaFactorId, challengeId:ch.data.id, code:code });
+    if(btn){ btn.disabled=false; btn.textContent='Verify Code \u2192'; }
+    if (vr.error) { nxMFAErr('Incorrect code. Try again.'); return; }
+    // Success
+    var w = document.getElementById('nxMFAWall');
+    if(w) w.style.display='none';
+    nxMFAErr('');
+    if (_mfaCallback) _mfaCallback(vr.data.session);
+  };
+
+  global.nxMFAErr = function(msg) {
+    var el = document.getElementById('nxMFAErr');
+    if(el){ el.textContent=msg; el.style.display=msg?'block':'none'; }
+  };
+
+  // ── ENROLL FLOW ────────────────────────────────────────────────
+  global.nxMFAStartEnroll = async function() {
+    var btn = document.getElementById('nxMFAEnrollBtn');
+    if(btn){ btn.disabled=true; btn.textContent='Loading\u2026'; }
+    var r = await sb().auth.mfa.enroll({ factorType:'totp', friendlyName:'NexGen Authenticator' });
+    if(btn){ btn.disabled=false; btn.textContent='Enable MFA'; }
+    if (r.error) { nxMFASettingsErr(r.error.message||'Enroll failed'); return; }
+    var data = r.data;
+    _mfaFactorId = data.id;
+    // Show QR code
+    var qrImg = document.getElementById('nxMFAQR');
+    if(qrImg) qrImg.src = data.totp.qr_code;
+    var secret = document.getElementById('nxMFASecret');
+    if(secret) secret.textContent = data.totp.secret;
+    var enrollPanel = document.getElementById('nxMFAEnrollPanel');
+    if(enrollPanel) enrollPanel.style.display='block';
+    var enrollBtn = document.getElementById('nxMFAEnrollBtn');
+    if(enrollBtn) enrollBtn.style.display='none';
+    nxMFASettingsErr('');
+  };
+
+  global.nxMFAConfirmEnroll = async function() {
+    var code = (document.getElementById('nxMFAEnrollCode')||{}).value.replace(/\s/g,'');
+    if (code.length !== 6 || isNaN(code)) { nxMFASettingsErr('Enter the 6-digit code from your authenticator app'); return; }
+    var btn = document.getElementById('nxMFAConfirmBtn');
+    if(btn){ btn.disabled=true; btn.textContent='Verifying\u2026'; }
+    var ch = await sb().auth.mfa.challenge({ factorId: _mfaFactorId });
+    if (ch.error) { nxMFASettingsErr(ch.error.message); if(btn){btn.disabled=false;btn.textContent='Confirm & Enable';} return; }
+    var vr = await sb().auth.mfa.verify({ factorId:_mfaFactorId, challengeId:ch.data.id, code:code });
+    if(btn){ btn.disabled=false; btn.textContent='Confirm & Enable'; }
+    if (vr.error) { nxMFASettingsErr('Incorrect code. Scan the QR code again and retry.'); return; }
+    // MFA enrolled
+    nxMFASettingsErr('');
+    var enrollPanel = document.getElementById('nxMFAEnrollPanel');
+    if(enrollPanel) enrollPanel.style.display='none';
+    var status = document.getElementById('nxMFAStatus');
+    if(status){ status.textContent='\u2713 MFA enabled'; status.style.color='#00C88C'; }
+    var disableBtn = document.getElementById('nxMFADisableBtn');
+    if(disableBtn) disableBtn.style.display='inline-block';
+    if(typeof nxToast !== 'undefined') nxToast('\u2713 MFA enabled successfully');
+    else if(typeof toast !== 'undefined') toast('\u2713 MFA enabled successfully');
+  };
+
+  global.nxMFADisable = async function() {
+    if(!confirm('Disable MFA? Your account will only be protected by your password.')) return;
+    var factors = await sb().auth.mfa.listFactors();
+    if(factors.error || !factors.data || !factors.data.totp) return;
+    var totp = factors.data.totp[0];
+    if(!totp) return;
+    var r = await sb().auth.mfa.unenroll({ factorId: totp.id });
+    if(r.error){ nxMFASettingsErr(r.error.message); return; }
+    var status = document.getElementById('nxMFAStatus');
+    if(status){ status.textContent='MFA not enabled'; status.style.color=''; }
+    var enrollBtn = document.getElementById('nxMFAEnrollBtn');
+    if(enrollBtn) enrollBtn.style.display='inline-block';
+    var disableBtn = document.getElementById('nxMFADisableBtn');
+    if(disableBtn) disableBtn.style.display='none';
+    if(typeof nxToast !== 'undefined') nxToast('MFA disabled');
+    else if(typeof toast !== 'undefined') toast('MFA disabled');
+  };
+
+  global.nxMFASettingsErr = function(msg){
+    var el=document.getElementById('nxMFASettingsErr');
+    if(el){ el.textContent=msg; el.style.display=msg?'block':'none'; }
+  };
+
+  global.nxMFALoadStatus = async function(){
+    var factors = await sb().auth.mfa.listFactors();
+    var totp = factors.data && factors.data.totp && factors.data.totp[0];
+    var status = document.getElementById('nxMFAStatus');
+    var enrollBtn = document.getElementById('nxMFAEnrollBtn');
+    var disableBtn = document.getElementById('nxMFADisableBtn');
+    if(totp && totp.status==='verified'){
+      if(status){ status.textContent='\u2713 MFA enabled'; status.style.color='#00C88C'; }
+      if(enrollBtn) enrollBtn.style.display='none';
+      if(disableBtn) disableBtn.style.display='inline-block';
+    } else {
+      if(status){ status.textContent='MFA not enabled'; status.style.color=''; }
+      if(enrollBtn) enrollBtn.style.display='inline-block';
+      if(disableBtn) disableBtn.style.display='none';
+    }
+  };
+
+})(window);
+// ─────────────────────────────────────────────────────────────────
+
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- NexGen MFA Challenge Wall                                      -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="nxMFAWall" style="display:none;position:fixed;inset:0;background:rgba(11,23,37,.97);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(18px);padding:20px">
+  <div style="background:#0D1B2E;border:1px solid rgba(0,200,255,.2);border-radius:14px;padding:36px;width:100%;max-width:400px;text-align:center">
+    <svg width="44" height="44" viewBox="0 0 28 28" fill="none" style="margin-bottom:16px"><polygon points="14,2 24,7.5 24,20.5 14,26 4,20.5 4,7.5" stroke="#00C8FF" stroke-width="1.5" fill="none"/><polygon points="14,7 20,10.5 20,17.5 14,21 8,17.5 8,10.5" stroke="#00C8FF" stroke-width="1" fill="none" opacity=".6"/><circle cx="14" cy="14" r="2.5" fill="#00C8FF"/></svg>
+    <div style="font-family:monospace;font-size:9px;color:#00C8FF;letter-spacing:3px;margin-bottom:10px">TWO-FACTOR AUTHENTICATION</div>
+    <div style="font-size:19px;font-weight:700;color:#E8F2FB;margin-bottom:8px;letter-spacing:-.4px">Enter your authentication code</div>
+    <div style="font-size:12.5px;color:#8BAFC8;line-height:1.8;margin-bottom:24px">Open your authenticator app (Google Authenticator, Authy, etc.) and enter the 6-digit code for NexGen.</div>
+    <div id="nxMFAErr" style="display:none;background:rgba(255,77,77,.08);border:1px solid rgba(255,77,77,.2);border-radius:7px;padding:9px 13px;font-family:monospace;font-size:10px;color:#FF6B6B;margin-bottom:14px;text-align:left"></div>
+    <input id="nxMFACode" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+      style="width:100%;background:#0B1725;border:1px solid rgba(0,200,255,.2);border-radius:9px;padding:14px;font-family:monospace;font-size:26px;letter-spacing:10px;text-align:center;color:#00C8FF;outline:none;box-sizing:border-box;margin-bottom:16px"
+      onkeydown="if(event.key==='Enter')nxMFAVerify()"
+      oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/>
+    <button id="nxMFABtn" onclick="nxMFAVerify()"
+      style="width:100%;padding:13px;background:#00C8FF;color:#04080E;border:none;border-radius:8px;font-family:monospace;font-size:11px;font-weight:700;cursor:pointer;margin-bottom:12px;letter-spacing:.5px;transition:opacity .15s"
+      onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Verify Code &#x2192;</button>
+    <div style="font-family:monospace;font-size:9px;color:#3D5A73">Having trouble? Contact <a href="mailto:support@corverxis.com" style="color:#00C8FF;text-decoration:none">support@corverxis.com</a></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- NexGen MFA Settings Panel (inject into account/settings area)  -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="nxMFASettings" style="display:none;position:fixed;inset:0;background:rgba(11,23,37,.95);z-index:99997;align-items:center;justify-content:center;backdrop-filter:blur(14px);padding:20px">
+  <div style="background:#0D1B2E;border:1px solid rgba(0,200,255,.2);border-radius:14px;padding:36px;width:100%;max-width:480px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+      <div>
+        <div style="font-family:monospace;font-size:9px;color:#00C8FF;letter-spacing:2px;margin-bottom:6px">SECURITY SETTINGS</div>
+        <div style="font-size:18px;font-weight:700;color:#E8F2FB;letter-spacing:-.4px">Two-Factor Authentication</div>
+      </div>
+      <button onclick="document.getElementById('nxMFASettings').style.display='none'"
+        style="background:none;border:none;color:#4A6C84;font-size:22px;cursor:pointer;padding:4px"
+        onmouseover="this.style.color='#E8F2FB'" onmouseout="this.style.color='#4A6C84'">&#x2715;</button>
+    </div>
+    <div style="background:#0B1725;border:1px solid rgba(0,200,255,.1);border-radius:10px;padding:18px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600;color:#E8F2FB">Authenticator App (TOTP)</div>
+        <span id="nxMFAStatus" style="font-family:monospace;font-size:10px;color:#8BAFC8">Checking&#x2026;</span>
+      </div>
+      <div style="font-size:12px;color:#8BAFC8;line-height:1.7;margin-bottom:14px">Use Google Authenticator, Authy, or any TOTP app to generate secure login codes. Once enabled, you will be asked for a code every time you sign in.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="nxMFAEnrollBtn" onclick="nxMFAStartEnroll()"
+          style="padding:8px 18px;background:#00C8FF;color:#04080E;border:none;border-radius:7px;font-family:monospace;font-size:10px;font-weight:700;cursor:pointer;transition:opacity .15s"
+          onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Enable MFA</button>
+        <button id="nxMFADisableBtn" onclick="nxMFADisable()" style="display:none;padding:8px 18px;background:transparent;border:1px solid rgba(255,77,77,.3);color:#FF6B6B;border-radius:7px;font-family:monospace;font-size:10px;cursor:pointer">Disable MFA</button>
+      </div>
+    </div>
+    <div id="nxMFASettingsErr" style="display:none;background:rgba(255,77,77,.08);border:1px solid rgba(255,77,77,.2);border-radius:7px;padding:9px 13px;font-family:monospace;font-size:10px;color:#FF6B6B;margin-bottom:14px"></div>
+    <!-- Enroll panel (shown after clicking Enable) -->
+    <div id="nxMFAEnrollPanel" style="display:none;background:#0B1725;border:1px solid rgba(0,200,255,.12);border-radius:10px;padding:20px">
+      <div style="font-size:12px;font-weight:600;color:#E8F2FB;margin-bottom:12px">Step 1 — Scan this QR code with your authenticator app</div>
+      <div style="text-align:center;margin-bottom:14px">
+        <img id="nxMFAQR" src="" alt="QR Code" style="width:160px;height:160px;border-radius:8px;background:#fff;padding:8px"/>
+      </div>
+      <div style="font-size:11px;color:#8BAFC8;margin-bottom:6px">Or enter this secret key manually:</div>
+      <div id="nxMFASecret" style="font-family:monospace;font-size:11px;color:#00C8FF;background:#0D1B2E;border:1px solid rgba(0,200,255,.15);border-radius:6px;padding:8px 12px;word-break:break-all;margin-bottom:16px;letter-spacing:2px"></div>
+      <div style="font-size:12px;font-weight:600;color:#E8F2FB;margin-bottom:8px">Step 2 — Enter the 6-digit code to confirm</div>
+      <input id="nxMFAEnrollCode" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+        style="width:100%;background:#0D1B2E;border:1px solid rgba(0,200,255,.2);border-radius:8px;padding:11px;font-family:monospace;font-size:22px;letter-spacing:8px;text-align:center;color:#00C8FF;outline:none;box-sizing:border-box;margin-bottom:12px"
+        oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/>
+      <button id="nxMFAConfirmBtn" onclick="nxMFAConfirmEnroll()"
+        style="width:100%;padding:12px;background:#00C8FF;color:#04080E;border:none;border-radius:8px;font-family:monospace;font-size:10.5px;font-weight:700;cursor:pointer;transition:opacity .15s"
+        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Confirm &amp; Enable &#x2713;</button>
+    </div>
+    <!-- Recovery note -->
+    <div style="margin-top:18px;padding:14px;background:rgba(255,184,48,.05);border:1px solid rgba(255,184,48,.15);border-radius:8px">
+      <div style="font-family:monospace;font-size:9px;color:#FFB830;letter-spacing:1.5px;margin-bottom:5px">&#x26A0; IMPORTANT</div>
+      <div style="font-size:11.5px;color:#8BAFC8;line-height:1.7">If you lose access to your authenticator app you will need to contact <a href="mailto:support@corverxis.com" style="color:#00C8FF;text-decoration:none">support@corverxis.com</a> to recover your account. Save your secret key in a safe place.</div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
