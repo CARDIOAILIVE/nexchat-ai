@@ -9,12 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0B1725;--surface:#0D1B2E;--panel:#0F2035;--lift:#132840;
-  --b:rgba(0,200,255,.08);--b2:rgba(0,200,255,.15);--b3:rgba(0,200,255,.28);
-  --text:#E8F2FB;--dim:#8BAFC8;--muted:#3D5A73;
+  --bg:#0F2645;--surface:#162E52;--panel:#1B3560;--lift:#1E3D6E;
+  --b:rgba(0,200,255,.1);--b2:rgba(0,200,255,.2);--b3:rgba(0,200,255,.35);
+  --text:#E8F2FB;--dim:#9BC0D8;--muted:#5A84A8;
   --accent:#00C8FF;--a2:rgba(0,200,255,.12);
   --green:#00E87A;--amber:#FFB830;--red:#FF4D4D;--violet:#9B79FF;
   --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
@@ -140,7 +142,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .att-x{cursor:pointer;color:var(--muted);font-size:13px;line-height:1}
 
 /* ── AUTH WALL ── */
-.auth-wall{display:none;position:fixed;inset:0;background:rgba(11,23,37,.97);z-index:9999;align-items:flex-start;justify-content:center;backdrop-filter:blur(18px);padding:32px 20px;overflow-y:auto}
+.auth-wall{display:none;position:fixed;inset:0;background:rgba(15,38,69,.97);z-index:9999;align-items:flex-start;justify-content:center;backdrop-filter:blur(18px);padding:32px 20px;overflow-y:auto}
 .auth-inner{display:flex;gap:40px;align-items:flex-start;max-width:820px;width:100%;margin:auto}
 .auth-highlights{flex:1;max-width:340px;padding:8px 0}
 .auth-form-card{background:var(--surface);border:1px solid var(--b2);border-radius:14px;padding:28px;width:100%;max-width:400px;flex-shrink:0}
@@ -164,7 +166,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .plan-opt.selected .plan-opt-price{color:var(--accent)}
 
 /* ── UPGRADE WALL ── */
-.upgrade-wall{display:none;position:fixed;inset:0;background:rgba(11,23,37,.95);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(14px);padding:20px}
+.upgrade-wall{display:none;position:fixed;inset:0;background:rgba(15,38,69,.95);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(14px);padding:20px}
 .upgrade-card{background:var(--surface);border:1px solid var(--b2);border-radius:14px;padding:36px;max-width:580px;width:100%;text-align:center}
 .upgrade-plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0 18px}
 .uplan{background:var(--bg);border:1px solid var(--b2);border-radius:10px;padding:18px 10px;text-align:center}
@@ -179,9 +181,33 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .uplan-btn.solid:hover{opacity:.88}
 
 /* ── TOAST ── */
+/* ── EXPLAINABLE AI BLOCK ── */
+.xai-block{margin-top:16px;padding:14px 16px;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:10px;font-size:12.5px;}
+.xai-header{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--violet);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.xai-block p{color:var(--dim);font-size:12.5px;line-height:1.75;margin:0 0 6px;}
+.xai-block strong{color:var(--text);}
+.xai-block h3{font-size:11px;color:var(--violet);font-family:var(--mono);letter-spacing:1px;text-transform:none;margin:10px 0 4px;}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--b2);border-radius:8px;padding:10px 16px;font-family:var(--mono);font-size:11.5px;color:var(--accent);z-index:99999;opacity:0;transition:opacity .25s;pointer-events:none}
 .toast.show{opacity:1}
 
+/* ── MODES ── */
+.mode-bar{display:flex;gap:6px;padding:6px 20px;flex-wrap:wrap;flex-shrink:0}
+.mode-btn{padding:5px 13px;border-radius:20px;border:1px solid var(--b2);background:transparent;color:var(--dim);font-family:var(--mono);font-size:9.5px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+.mode-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mode-btn.active{background:var(--a2);border-color:var(--accent);color:var(--accent);font-weight:700}
+.mode-panel{display:none;position:fixed;left:0;right:0;z-index:200;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--b2);font-size:12px;color:var(--dim);line-height:1.7;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.mode-panel.show{display:block}
+.mode-starters{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mode-starter{padding:5px 12px;background:var(--panel);border:1px solid var(--b2);border-radius:7px;font-size:11px;color:var(--dim);cursor:pointer;transition:all .13s}
+.mode-starter:hover{border-color:var(--accent);color:var(--accent)}
+.vision-preview{max-width:220px;max-height:160px;border-radius:8px;border:1px solid var(--b2);margin-top:8px;display:block}
+.plus-btn{width:34px;height:34px;border-radius:8px;background:var(--a2);border:1px solid var(--b2);color:var(--accent);font-size:22px;font-weight:300;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.plus-btn:hover{background:var(--b2);border-color:var(--b3)}
+.doc-atts{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 4px;border-top:1px solid var(--b)}
+.doc-chip{display:flex;align-items:center;gap:5px;padding:3px 10px 3px 8px;background:var(--a2);border:1px solid var(--b2);border-radius:20px;font-family:var(--mono);font-size:9.5px;color:var(--accent);max-width:200px}
+.doc-chip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-chip-x{cursor:pointer;color:var(--muted);font-size:13px;line-height:1;margin-left:2px;flex-shrink:0}
+.doc-chip-x:hover{color:var(--red)}
 @media(max-width:640px){
   .auth-inner{flex-direction:column}
   .auth-highlights{display:none}
@@ -194,7 +220,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 <!-- ── TOP BAR ── -->
 <div class="topbar">
-  <a class="brand" href="index.html">
+  <a class="brand" href="https://corverxis.com/">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><polygon points="14,2 24,7.5 24,20.5 14,26 4,20.5 4,7.5" stroke="#00C8FF" stroke-width="1.5" fill="none"/><polygon points="14,7 20,10.5 20,17.5 14,21 8,17.5 8,10.5" stroke="#00C8FF" stroke-width="1" fill="none" opacity=".6"/><circle cx="14" cy="14" r="2.5" fill="#00C8FF"/><line x1="14" y1="2" x2="14" y2="7" stroke="#00C8FF" stroke-width="1" opacity=".5"/><line x1="24" y1="7.5" x2="20" y2="10.5" stroke="#00C8FF" stroke-width="1" opacity=".5"/><line x1="24" y1="20.5" x2="20" y2="17.5" stroke="#00C8FF" stroke-width="1" opacity=".5"/><line x1="14" y1="26" x2="14" y2="21" stroke="#00C8FF" stroke-width="1" opacity=".5"/><line x1="4" y1="20.5" x2="8" y2="17.5" stroke="#00C8FF" stroke-width="1" opacity=".5"/><line x1="4" y1="7.5" x2="8" y2="10.5" stroke="#00C8FF" stroke-width="1" opacity=".5"/></svg>
     <div>
       <div class="brand-name">NexGen <span>Chat</span></div>
@@ -215,7 +241,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
     <span class="plan-badge" id="planBadge" style="display:none"></span>
     <button class="tbtn" onclick="toggleSidebar()">&#9776;</button>
     <button class="tbtn" onclick="clearChat()">&#x2715; Clear</button>
-    <a class="tbtn" href="index.html">&#x2190; Home</a>
+    <a class="tbtn" href="https://corverxis.com/">&#x2190; Home</a>
     <button class="tbtn" onclick="document.getElementById('nxMFASettings').style.display='flex';nxMFALoadStatus();" title="Security &amp; MFA">&#x1F512; MFA</button>
     <button id="signInBtn" onclick="showAuth('up')">Get Access</button>
     <button id="userPill" onclick="signOut()"></button>
@@ -223,6 +249,93 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 </div>
 
 <!-- ── MAIN ── -->
+<!-- ── MODE BAR ── -->
+<div class="mode-bar" id="modeBar">
+  <button class="mode-btn active" id="modeChat"    onclick="setMode('chat')"    title="Standard chat">&#x1F4AC; Chat</button>
+  <button class="mode-btn"        id="modeVision"  onclick="setMode('vision')"  title="Analyse images with AI Vision">&#x1F441; Vision AI</button>
+  <button class="mode-btn"        id="modeGraphics" onclick="setMode('graphics')" title="Create graphics & design specs">&#x1F3A8; Graphics</button>
+  <button class="mode-btn"        id="modePptx"    onclick="setMode('pptx')"    title="Create PowerPoint slide decks">&#x1F4CA; Slides</button>
+  <button class="mode-btn"        id="modeKb"      onclick="setMode('kb')"      title="Build &amp; query knowledge bases">&#x1F4DA; Knowledge Base</button>
+  <button class="mode-btn"        id="modeWord"    onclick="setMode('word')"    title="Create formatted Word documents">&#x1F4DD; Word Doc</button>
+</div>
+
+<!-- ── MODE PANELS ── -->
+<div class="mode-panel" id="panelVision">
+  <strong style="color:var(--text)">&#x1F441; Vision AI</strong> — Upload any image and ask the AI to analyse it: extract data from charts, read documents, identify objects, review UI screenshots, or describe scenes.
+  <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <label style="padding:6px 14px;background:var(--a2);border:1px solid var(--b2);border-radius:7px;font-family:var(--mono);font-size:9.5px;color:var(--accent);cursor:pointer">
+      &#x1F4F7; Upload Image
+      <input type="file" id="visionFileIn" accept="image/*" style="display:none" onchange="onVisionFile(this)"/>
+    </label>
+    <span id="visionFileName" style="font-family:var(--mono);font-size:9px;color:var(--muted)"></span>
+  </div>
+  <img id="visionPreview" class="vision-preview" style="display:none"/>
+  <div class="mode-starters">
+    <div class="mode-starter" onclick="visionPrompt('What does this image show? Describe everything you see in detail.')">&#x1F4AC; Describe image</div>
+    <div class="mode-starter" onclick="visionPrompt('Extract all text, numbers and labels from this image into a structured format.')">&#x1F4CB; Extract text & data</div>
+    <div class="mode-starter" onclick="visionPrompt('This is a chart or graph. Extract all data points, axis labels, legends and trends into a table, then summarise the key insights.')">&#x1F4CA; Analyse chart</div>
+    <div class="mode-starter" onclick="visionPrompt('Review this UI screenshot. Identify usability issues, design inconsistencies and suggest specific improvements.')">&#x1F5A5; UI review</div>
+    <div class="mode-starter" onclick="visionPrompt('Identify all products, brands or items visible in this image. List each with a brief description.')">&#x1F50D; Identify objects</div>
+  </div>
+</div>
+
+<div class="mode-panel" id="panelGraphics">
+  <strong style="color:var(--text)">&#x1F3A8; Graphics &amp; Design</strong> — Generate SVG graphics, design briefs, infographic layouts, colour palettes and visual specs ready for Figma, Canva or Illustrator.
+  <div class="mode-starters">
+    <div class="mode-starter" onclick="modePrompt('Create a complete SVG infographic showing [YOUR DATA HERE]. Include a title, colour-coded sections, icons and a legend. Output as clean, ready-to-use SVG code.')">&#x1F5BC; SVG infographic</div>
+    <div class="mode-starter" onclick="modePrompt('Design a professional brand identity for a company called [NAME] in the [INDUSTRY] space. Provide: primary and secondary colour palette (hex codes), typography recommendations, logo concept description, and usage guidelines.')">&#x1F3A8; Brand identity</div>
+    <div class="mode-starter" onclick="modePrompt('Create a detailed design brief for a social media graphic promoting [YOUR PRODUCT/EVENT]. Include: dimensions, layout, visual hierarchy, colour palette, copy recommendations, and a Figma-ready component list.')">&#x1F4F1; Social media graphic</div>
+    <div class="mode-starter" onclick="modePrompt('Generate a complete SVG diagram showing [PROCESS/SYSTEM]. Use boxes, arrows and labels. Make it professional and export-ready.')">&#x1F4CD; Process diagram SVG</div>
+    <div class="mode-starter" onclick="modePrompt('Create a data visualisation for the following numbers: [YOUR DATA]. Recommend the best chart type, generate SVG code, and explain the visual choices.')">&#x1F4C8; Data visualisation</div>
+  </div>
+</div>
+
+<div class="mode-panel" id="panelPptx">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div><strong style="color:var(--text)">&#x1F4CA; PowerPoint Slides</strong> — Describe your deck and NexGen will generate a real <strong style="color:var(--accent)">.pptx file</strong> you can download and open directly in PowerPoint or Google Slides.</div>
+    <button id="pptxDownloadBtn" onclick="downloadLastPptx()" style="display:none;padding:6px 14px;background:var(--accent);color:#04080E;border:none;border-radius:7px;font-family:var(--mono);font-size:9.5px;font-weight:700;cursor:pointer">&#x2B07; Download .pptx</button>
+  </div>
+  <div class="mode-starters" style="margin-top:8px">
+    <div class="mode-starter" onclick="pptxPrompt('investor')">&#x1F4B0; Investor pitch deck</div>
+    <div class="mode-starter" onclick="pptxPrompt('sales')">&#x1F4BC; Sales presentation</div>
+    <div class="mode-starter" onclick="pptxPrompt('business-review')">&#x1F4CB; Business review</div>
+    <div class="mode-starter" onclick="pptxPrompt('product-launch')">&#x1F680; Product launch</div>
+    <div class="mode-starter" onclick="pptxPrompt('training')">&#x1F393; Training module</div>
+    <div class="mode-starter" onclick="pptxPrompt('custom')">&#x270F;&#xFE0F; Custom deck</div>
+  </div>
+</div>
+
+<div class="mode-panel" id="panelKb">
+  <strong style="color:var(--text)">&#x1F4DA; Knowledge Base</strong> — Build structured knowledge bases, generate FAQs, create documentation and organise information from any source.
+  <div class="mode-starters">
+    <div class="mode-starter" onclick="modePrompt('I will paste my product documentation below. Convert it into a structured knowledge base with: 1) Categorised FAQ pairs (Q&A format), 2) A master index with one-line descriptions, 3) Quick-reference cards for the top 5 features, 4) Identified gaps where documentation is missing.
+
+[PASTE YOUR DOCUMENTATION HERE]')">&#x1F4C2; Build from docs</div>
+    <div class="mode-starter" onclick="modePrompt('Create a comprehensive FAQ document for [PRODUCT/SERVICE]. Generate 20 realistic customer questions covering: getting started, core features, pricing, troubleshooting, integrations, and account management. Write clear, concise answers for each.')">&#x2753; Generate FAQ</div>
+    <div class="mode-starter" onclick="modePrompt('Write a complete onboarding knowledge base for new [JOB TITLE] employees at a [COMPANY TYPE]. Include: Day 1 checklist, Key tools and how to access them, Important contacts and their roles, Core processes they need to know, Common questions and answers, and Links to important resources.')">&#x1F44B; Onboarding guide</div>
+    <div class="mode-starter" onclick="modePrompt('Create a technical API documentation template for [YOUR API NAME]. Include: Overview, Authentication, Base URL, Rate Limits, Endpoints (with request/response examples for GET, POST, PUT, DELETE), Error codes, SDKs available, and Changelog section.')">&#x1F527; API documentation</div>
+    <div class="mode-starter" onclick="modePrompt('Analyse the following text and extract a structured knowledge base from it. Identify: key concepts and definitions, processes and procedures, important facts and figures, relationships between topics, and any action items or recommendations.
+
+[PASTE YOUR CONTENT HERE]')">&#x1F9E0; Extract knowledge</div>
+  </div>
+
+<div class="mode-panel" id="panelWord">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div><strong style="color:var(--text)">&#x1F4DD; Word Document</strong> — Describe what you need and NexGen will write a fully formatted, professional <strong style="color:var(--accent)">.docx</strong> document you can download and open in Microsoft Word or Google Docs.</div>
+    <button id="wordDownloadBtn" onclick="downloadLastWord()" style="display:none;padding:6px 14px;background:var(--accent);color:#04080E;border:none;border-radius:7px;font-family:var(--mono);font-size:9.5px;font-weight:700;cursor:pointer">&#x2B07; Download .docx</button>
+  </div>
+  <div class="mode-starters" style="margin-top:8px">
+    <div class="mode-starter" onclick="wordPrompt('report')">&#x1F4CA; Business report</div>
+    <div class="mode-starter" onclick="wordPrompt('proposal')">&#x1F4BC; Project proposal</div>
+    <div class="mode-starter" onclick="wordPrompt('letter')">&#x2709;&#xFE0F; Professional letter</div>
+    <div class="mode-starter" onclick="wordPrompt('sop')">&#x1F4CB; SOP / Procedure</div>
+    <div class="mode-starter" onclick="wordPrompt('contract')">&#x2696;&#xFE0F; Contract / Agreement</div>
+    <div class="mode-starter" onclick="wordPrompt('memo')">&#x1F4E8; Executive memo</div>
+    <div class="mode-starter" onclick="wordPrompt('custom')">&#x270F;&#xFE0F; Custom document</div>
+  </div>
+</div>
+</div>
+
 <div class="main">
 
   <!-- Sidebar -->
@@ -252,13 +365,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
       <div class="empty" id="emptyState">
         <div class="empty-icon">&#x1F9EC;</div>
         <div class="empty-title">NexGen <span style="color:var(--accent)">Chat</span></div>
-        <div class="empty-sub">Start a conversation with NexGen Flash, Pro or Ultra. Switch models anytime using the tabs above.</div>
+        <div class="empty-sub">Chat with NexGen Flash, Pro or Ultra. Every response includes an <strong style="color:var(--violet)">🧠 Explainable AI</strong> section that shows how the answer was built — so you always understand the reasoning behind it.</div>
         <div class="starters">
-          <div class="starter" onclick="loadStarter('What can you help me with today?')">&#x1F44B; What can you do?</div>
-          <div class="starter" onclick="loadStarter('Help me brainstorm ideas for a new AI product in the healthcare space.')">&#x1F4A1; Brainstorm ideas</div>
-          <div class="starter" onclick="loadStarter('Write a detailed technical specification for a REST API.')">&#x1F4C4; Write a spec</div>
-          <div class="starter" onclick="loadStarter('Explain machine learning to me as if I am a business executive.')">&#x1F393; Explain ML simply</div>
-          <div class="starter" onclick="loadStarter('Debug this code and explain what is wrong:')">&#x1F41B; Debug code</div>
+          <div class="starter" onclick="loadStarter('What can you help me with today, and how does your Explainable AI work?')">&#x1F9E0; What can you do?</div>
+          <div class="starter" onclick="setMode('vision')">&#x1F441; Analyse an image</div>
+          <div class="starter" onclick="setMode('graphics')">&#x1F3A8; Create graphics</div>
+          <div class="starter" onclick="setMode('pptx')">&#x1F4CA; Build a slide deck</div>
+          <div class="starter" onclick="setMode('kb')">&#x1F4DA; Build knowledge base</div>
           <div class="starter" onclick="loadStarter('Create a go-to-market strategy for a B2B SaaS product.')">&#x1F680; Go-to-market strategy</div>
         </div>
       </div>
@@ -274,11 +387,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
     <div class="input-bar">
       <div class="input-inner">
         <div class="atts-row" id="attsRow"></div>
+        <div class="doc-atts" id="docAttsRow" style="display:none"></div>
         <div class="input-box">
+          <!-- ＋ attach button -->
+          <button class="plus-btn" title="Attach files or images" onclick="document.getElementById('docFileIn').click()">&#x2B;</button>
+          <input type="file" id="docFileIn" multiple
+            accept="image/*,.pdf,.txt,.md,.csv,.docx,.xlsx,.pptx,.json,.py,.js,.ts,.html,.css,.xml"
+            style="display:none" onchange="onDocFile(this)"/>
           <textarea class="chat-ta" id="chatIn" placeholder="Message NexGen Chat…" rows="1"
             onkeydown="onChatKey(event)" oninput="autoResize(this)"></textarea>
-          <input type="file" id="imgFile" accept="image/*" style="display:none" onchange="onImgFile(this)"/>
-          <button class="foot-btn" onclick="document.getElementById('imgFile').click()" title="Attach image" style="height:36px;margin-bottom:2px">&#x1F4CE;</button>
           <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send (Enter)">&#x279C;</button>
         </div>
         <div class="input-footer">
@@ -789,11 +906,28 @@ function appendStreamBubble(modelKey){
   return wrap.querySelector('.bubble');
 }
 function streamUpdate(bubble, text){
-  bubble.innerHTML = mdRender(text) + '<span class="stream-cursor" style="display:inline-block;width:2px;height:14px;background:var(--accent);animation:dotpop .7s infinite;vertical-align:middle;margin-left:2px"></span>';
+  bubble.innerHTML = renderWithXAI(text) + '<span class="stream-cursor" style="display:inline-block;width:2px;height:14px;background:var(--accent);animation:dotpop .7s infinite;vertical-align:middle;margin-left:2px"></span>';
   bubble.parentElement.parentElement.scrollIntoView({behavior:'smooth',block:'end'});
 }
 function finishBubble(bubble, text){
-  bubble.innerHTML = mdRender(text);
+  bubble.innerHTML = renderWithXAI(text);
+}
+function renderWithXAI(text){
+  // Split on the XAI block marker ---
+  var xaiRe = /\n---\n([\s\S]*?)\n---/;
+  var match = text.match(xaiRe);
+  if(!match){
+    return mdRender(text);
+  }
+  var main = text.slice(0, text.indexOf(match[0])).trim();
+  var xai  = match[1].trim();
+  var mainHtml = mdRender(main);
+  // Style the XAI block
+  var xaiHtml = '<div class="xai-block">'
+    + '<div class="xai-header"><span class="xai-icon">\u{1F9E0}</span> Explainable AI</div>'
+    + mdRender(xai)
+    + '</div>';
+  return mainHtml + xaiHtml;
 }
 function addErrBubble(msg){
   var wrap = document.createElement('div');
@@ -809,7 +943,11 @@ function sendMessage(){
   var inp = document.getElementById('chatIn');
   var text = inp.value.trim();
   var img = _atts.length ? _atts[0].url : null;
-  if(!text && !img) return;
+  if(!text && !img && !_visionImg && !_docAtts.length) return;
+  // Use vision image if in vision mode
+  if(!img && _visionImg && _mode === 'vision') img = _visionImg;
+  // If no text and only docs, add a default prompt
+  if(!text && _docAtts.length) text = 'Analyse the attached file(s) and provide a detailed summary with key insights and recommendations.';
   if(_busy) return;
 
   // Free plan limit
@@ -844,14 +982,35 @@ async function callNexGen(text, img){
       ? [{type:'image',source:{type:'url',url:m.img}},{type:'text',text:m.content||''}]
       : m.content};
   });
-  if(img) msgs.push({role:'user', content:[{type:'image',source:{type:'url',url:img}},{type:'text',text:text}]});
-  else msgs.push({role:'user', content:text});
+  // Build final user message — prefer doc attachments, then img, then plain text
+  var docContent = buildMsgContent(text);
+  if(docContent){
+    msgs.push({role:'user', content:docContent});
+  } else if(img){
+    var imgContent;
+    if(img.startsWith('data:')){
+      var parts = img.split(',');
+      var mtype = (parts[0].match(/:(.*?);/) || ['','image/jpeg'])[1];
+      imgContent = {type:'image', source:{type:'base64', media_type:mtype, data:parts[1]}};
+    } else {
+      imgContent = {type:'image', source:{type:'url', url:img}};
+    }
+    msgs.push({role:'user', content:[imgContent,{type:'text',text:text||'Describe this image in detail.'}]});
+  } else {
+    msgs.push({role:'user', content:text});
+  }
 
+  var modeSystemPrompt = window._modeSystem || '';
+  var XAI_BASE = 'You are NexGen Chat, a world-class AI assistant built by Corverxis Technologies. You combine deep expertise with the ability to explain your thinking clearly.\n\nCORE BEHAVIOUR — EXPLAINABLE AI:\nAfter every substantive response, add an EXPLANATION section that reveals:\n1. HOW you approached the problem — your reasoning process step by step\n2. WHY you structured the answer the way you did — what choices you made and why\n3. WHAT you considered but set aside — alternatives or caveats worth knowing\n4. HOW CONFIDENT you are — and where the user should verify or get expert input\n\nFormat the explanation block like this at the end of every answer:\n\n---\n**🧠 How I approached this**\n[2-4 sentences explaining your reasoning process, what information you drew on, and how you structured the answer]\n\n**⚖️ Confidence & caveats**\n[Be honest: what you are confident about, what is uncertain, and what the user should double-check with a specialist or current source]\n---\n\nTONE & STYLE:\n- Write like a brilliant, senior colleague — clear, direct, no jargon unless necessary\n- Use formatting (headers, bullets, tables) only when it genuinely helps clarity\n- Never pad answers. Say what needs to be said, then stop.\n- For simple factual questions, keep the explanation brief (1-2 sentences each)\n- For complex analysis, research, documents or code, give a thorough explanation\n\nSPECIAL MODES — when activated, follow mode-specific instructions AND still include the explanation block.';
+  var finalSystem = modeSystemPrompt
+    ? XAI_BASE + '\n\nMODE-SPECIFIC INSTRUCTIONS (override defaults where relevant):\n' + modeSystemPrompt
+    : XAI_BASE;
   var body = {
     model: MODELS[_model].id,
     max_tokens: 4096,
     messages: msgs,
-    stream: _stream
+    stream: _stream,
+    system: finalSystem
   };
 
   try{
@@ -893,6 +1052,17 @@ async function callNexGen(text, img){
     finishBubble(bubble, full);
     _curConv.msgs.push({role:'assistant',content:full,model:_model});
     saveConvs();
+    clearDocAtts();
+    // Auto-build pptx if in slides mode
+    if(_mode === 'pptx') {
+      var built = tryBuildPptxFromResponse(full);
+      if(!built) toast('Slides generated — refining format, click “Download .pptx” if available');
+    }
+    // Auto-build Word doc if in word mode
+    if(_mode === 'word') {
+      var builtW = tryBuildWordFromResponse(full);
+      if(!builtW) toast('Document generated — click “Download .docx” to save');
+    }
     // Increment free usage
     if(_plan==='free'){
       var used = parseInt(localStorage.getItem('nxc_free_used')||'0')+1;
@@ -1147,8 +1317,8 @@ function buildExportHTML(){
     html: '<!DOCTYPE html><html><head><meta charset="UTF-8">'
       + '<style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1a1a1a;margin:0;padding:0;line-height:1.6}'
       + '@page{margin:2cm 2.5cm}p,h1,h2,h3,ul,ol,blockquote,pre{page-break-inside:avoid}'
-      + '</style></head>'
-      + '<body style="max-width:800px;margin:40px auto;padding:0 20px">' + body + '</body></html>'
+      + '<\/st'+'yle><\/he'+'ad>'
+      + '<body style="max-width:800px;margin:40px auto;padding:0 20px">' + body + '<\/bo'+'dy><\/ht'+'ml>'
   };
 }
 
@@ -1160,10 +1330,10 @@ function downloadChatWord(){
   if(btn){ btn.disabled=true; btn.textContent='\u23F3 Building\u2026'; }
   try{
     var exp  = buildExportHTML();
-    var blob = new Blob(['\ufeff', exp.html], {type:'application/msword;charset=utf-8'});
+    var blob = new Blob(['\ufeff', exp.html], {type:'text/html;charset=utf-8'});
     var a    = document.createElement('a');
     a.href   = URL.createObjectURL(blob);
-    a.download = getFileName('doc');
+    a.download = getFileName('html');
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
     toast('\u2713 ' + getFileName('doc') + ' downloaded');
@@ -1226,7 +1396,7 @@ function showDriveInstructions(){
 
   var m = document.createElement('div');
   m.id  = 'nxDriveModal';
-  m.style.cssText = 'position:fixed;inset:0;background:rgba(11,23,37,.94);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(14px)';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(15,38,69,.94);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(14px)';
   m.innerHTML = ''
     + '<div style="background:#162E52;border:1px solid rgba(0,200,255,.25);border-radius:14px;padding:36px;max-width:480px;width:100%;text-align:center">'
     + '<svg width="44" height="44" viewBox="0 0 28 28" fill="none" style="margin-bottom:16px"><polygon points="14,2 24,7.5 24,20.5 14,26 4,20.5 4,7.5" stroke="#00C8FF" stroke-width="1.5" fill="none"/><polygon points="14,7 20,10.5 20,17.5 14,21 8,17.5 8,10.5" stroke="#00C8FF" stroke-width="1" fill="none" opacity=".6"/><circle cx="14" cy="14" r="2.5" fill="#00C8FF"/></svg>'
@@ -1243,6 +1413,706 @@ function showDriveInstructions(){
     + '</div>'
     + '</div>';
   document.body.appendChild(m);
+}
+// ─────────────────────────────────────────────────────────────────
+
+
+// ── DOCUMENT ATTACHMENTS ─────────────────────────────────────────
+var _docAtts = []; // {name, type, size, content, dataUrl, isImg}
+
+function onDocFile(input){
+  var files = Array.from(input.files||[]); if(!files.length) return;
+  files.forEach(function(file){
+    var isImg = file.type.startsWith('image/');
+    var reader = new FileReader();
+    reader.onload = function(e){
+      _docAtts.push({
+        name:   file.name,
+        type:   file.type,
+        size:   file.size,
+        isImg:  isImg,
+        dataUrl: isImg ? e.target.result : null,
+        content: isImg ? null : e.target.result
+      });
+      renderDocAtts();
+      toast('\u2713 ' + file.name + ' attached');
+    };
+    if(isImg) reader.readAsDataURL(file);
+    else reader.readAsText(file);
+  });
+  input.value = '';
+}
+
+function renderDocAtts(){
+  var row = document.getElementById('docAttsRow');
+  if(!row) return;
+  if(!_docAtts.length){ row.style.display='none'; row.innerHTML=''; return; }
+  row.style.display = 'flex';
+  row.innerHTML = _docAtts.map(function(a,i){
+    var icon = a.isImg ? '\uD83D\uDDBC' :
+      a.type.includes('pdf') ? '\uD83D\uDCC4' :
+      (a.name.endsWith('.xlsx')||a.name.endsWith('.csv')) ? '\uD83D\uDCCA' :
+      a.name.endsWith('.pptx') ? '\uD83D\uDCCA' :
+      (a.name.endsWith('.py')||a.name.endsWith('.js')||a.name.endsWith('.ts')) ? '\uD83D\uDCBB' :
+      '\uD83D\uDCC3';
+    var sz = a.size > 1048576 ? (a.size/1048576).toFixed(1)+'MB' : Math.round(a.size/1024)+'KB';
+    return '<div class="doc-chip" title="'+escHtml(a.name)+'">'
+      + '<span>'+icon+'</span>'
+      + '<span class="doc-chip-name">'+escHtml(a.name.slice(0,22))+'</span>'
+      + '<span style="font-family:var(--mono);font-size:8px;color:var(--muted);flex-shrink:0">'+sz+'</span>'
+      + '<span class="doc-chip-x" onclick="removeDocAtt('+i+')">&#x2715;</span>'
+      + '</div>';
+  }).join('');
+}
+
+function removeDocAtt(i){
+  _docAtts.splice(i,1);
+  renderDocAtts();
+}
+
+function clearDocAtts(){
+  _docAtts=[];
+  renderDocAtts();
+}
+
+// Build message content with attachments
+function buildMsgContent(text){
+  if(!_docAtts.length) return null; // use plain text path
+
+  var content = [];
+
+  // Add images first
+  _docAtts.filter(function(a){ return a.isImg; }).forEach(function(a){
+    var parts = a.dataUrl.split(',');
+    var mtype = (parts[0].match(/:(.*?);/)||['','image/jpeg'])[1];
+    content.push({type:'image', source:{type:'base64', media_type:mtype, data:parts[1]}});
+  });
+
+  // Build text with file contents appended
+  var txt = text || '';
+  _docAtts.filter(function(a){ return !a.isImg && a.content; }).forEach(function(a){
+    var preview = a.content.slice(0,12000);
+    var trunc = a.content.length > 12000 ? '\n...[truncated, total '+Math.round(a.content.length/1024)+'KB]' : '';
+    txt += '\n\n---\nAttached file: '+a.name+'\n```\n'+preview+trunc+'\n```';
+  });
+
+  content.push({type:'text', text: txt || 'Analyse the attached file(s) and provide detailed insights.'});
+  return content;
+}
+// ─────────────────────────────────────────────────────────────────
+
+
+// ── REAL PPTX GENERATOR ───────────────────────────────────────────
+var _lastPptxData = null;
+
+function pptxPrompt(type) {
+  var prompts = {
+    'investor':       'Create a 12-slide investor pitch deck for a B2B AI SaaS company called NexAgent by Corverxis Technologies. Include: Cover, Problem, Solution, Market Size (TAM $50B), Product Demo, Business Model, Traction & Metrics, Competition, Team, Financials, Use of Funds, and Call to Action.',
+    'sales':          'Create a 10-slide sales presentation for an AI automation platform. Include: Cover, Customer Pain Points, Our Solution, Key Features (3 slides), ROI & Case Study, Pricing, Implementation Timeline, and Next Steps.',
+    'business-review':'Create an 8-slide quarterly business review deck for Q3 2025. Include: Executive Summary, Revenue Performance vs Target, Key Wins & Highlights, Challenges & Risks, Team Updates, Q4 Priorities, Budget Overview, and Closing.',
+    'product-launch': 'Create a 7-slide product launch deck for a new AI chat platform called NexGen Chat by Corverxis Technologies. Include: Cover, Product Vision, Key Features, Target Market & Personas, Launch Timeline, Marketing Plan, and Success Metrics.',
+    'training':       'Create a 6-slide employee training module on AI tools in the workplace. Include: Welcome & Objectives, What is AI (plain English), 5 AI Tools You Can Use Today, Best Practices & Safety, Hands-On Exercise, and Knowledge Check.',
+    'custom':         'Create a professional 10-slide presentation deck on [YOUR TOPIC]. Replace [YOUR TOPIC] with your actual subject. Include a strong narrative arc with introduction, 6-8 content slides, and a compelling conclusion with call to action.'
+  };
+  var ta = document.getElementById('chatIn');
+  if(ta){ ta.value = prompts[type] || prompts['custom']; autoResize(ta); ta.focus(); }
+}
+
+function buildPptx(jsonData) {
+  if(typeof PptxGenJS === 'undefined'){
+    toast('PowerPoint library loading \u2014 try again in a moment');
+    return;
+  }
+
+  var prs = new PptxGenJS();
+  prs.layout   = 'LAYOUT_WIDE';
+  prs.author   = 'NexGen Chat \u00b7 Corverxis Technologies';
+  prs.company  = 'Corverxis Technologies';
+  prs.subject  = jsonData.title || 'Presentation';
+  prs.title    = jsonData.title || 'Presentation';
+
+  // ── Colour scheme ─────────────────────────────────────────────
+  var NAVY   = '0F2645';
+  var OCEAN  = '00C8FF';
+  var WHITE  = 'FFFFFF';
+  var LGREY  = 'E8F2FB';
+  var DGREY  = '5A84A8';
+  var ACCENT = (jsonData.theme === 'ocean') ? '0099CC' : '00C8FF';
+
+  function hexClean(h){ return (h||'').replace('#',''); }
+
+  jsonData.slides.forEach(function(slide, si) {
+    var sld = prs.addSlide();
+
+    // ── Background ───────────────────────────────────────────────
+    sld.background = { color: si === 0 ? NAVY : 'FFFFFF' };
+
+    // ── Accent bar at top ────────────────────────────────────────
+    sld.addShape(prs.ShapeType.rect, {
+      x: 0, y: 0, w: '100%', h: 0.08,
+      fill: { color: OCEAN }
+    });
+
+    // ── Slide number (skip cover) ────────────────────────────────
+    if(si > 0){
+      sld.addText((si).toString(), {
+        x: 12.2, y: 6.8, w: 0.5, h: 0.25,
+        fontSize: 8, color: DGREY, align: 'right',
+        fontFace: 'Calibri'
+      });
+      // Footer brand
+      sld.addText('Corverxis Technologies', {
+        x: 0.3, y: 6.8, w: 4, h: 0.25,
+        fontSize: 8, color: DGREY, align: 'left',
+        fontFace: 'Calibri'
+      });
+    }
+
+    var layout = slide.layout || 'title-content';
+
+    // ── COVER SLIDE ───────────────────────────────────────────────
+    if(si === 0 || layout === 'title-only'){
+      // Corverxis hex logo decoration (simplified shapes)
+      sld.addShape(prs.ShapeType.hexagon, {
+        x: 9.8, y: 0.8, w: 2.2, h: 2.2,
+        line: { color: OCEAN, width: 3 }, fill: { type: 'none' }
+      });
+      sld.addShape(prs.ShapeType.hexagon, {
+        x: 10.2, y: 1.2, w: 1.4, h: 1.4,
+        line: { color: OCEAN, width: 1.5 }, fill: { type: 'none' }
+      });
+
+      // Tagline bar
+      sld.addShape(prs.ShapeType.rect, {
+        x: 0.5, y: 2.4, w: 1.2, h: 0.06,
+        fill: { color: OCEAN }
+      });
+      sld.addText('CORVERXIS TECHNOLOGIES', {
+        x: 0.5, y: 2.6, w: 8, h: 0.35,
+        fontSize: 10, color: OCEAN, bold: false,
+        charSpacing: 4, fontFace: 'Calibri'
+      });
+      sld.addText(slide.title || jsonData.title || 'Presentation', {
+        x: 0.5, y: 3.1, w: 9, h: 1.8,
+        fontSize: 40, color: WHITE, bold: true,
+        fontFace: 'Calibri Light', lineSpacingMultiple: 1.1
+      });
+      if(slide.subtitle){
+        sld.addText(slide.subtitle, {
+          x: 0.5, y: 5.1, w: 8, h: 0.5,
+          fontSize: 16, color: LGREY, fontFace: 'Calibri'
+        });
+      }
+      if(slide.notes){
+        sld.addNotes(slide.notes);
+      }
+      return;
+    }
+
+    // ── SECTION DIVIDER ───────────────────────────────────────────
+    if(layout === 'section'){
+      sld.background = { color: NAVY };
+      sld.addShape(prs.ShapeType.rect, {
+        x: 0, y: 0, w: '100%', h: 0.08, fill: { color: OCEAN }
+      });
+      sld.addText(slide.title || '', {
+        x: 1, y: 2.6, w: 11, h: 1.2,
+        fontSize: 36, color: WHITE, bold: true,
+        fontFace: 'Calibri Light', align: 'center'
+      });
+      if(slide.subtitle){
+        sld.addText(slide.subtitle, {
+          x: 1, y: 3.9, w: 11, h: 0.5,
+          fontSize: 16, color: LGREY, align: 'center', fontFace: 'Calibri'
+        });
+      }
+      if(slide.notes) sld.addNotes(slide.notes);
+      return;
+    }
+
+    // ── QUOTE SLIDE ───────────────────────────────────────────────
+    if(layout === 'quote'){
+      sld.addShape(prs.ShapeType.rect, {
+        x: 0.5, y: 1.2, w: 0.1, h: 4.2,
+        fill: { color: OCEAN }
+      });
+      sld.addText('\u201C', {
+        x: 0.7, y: 0.8, w: 1, h: 1,
+        fontSize: 72, color: OCEAN, fontFace: 'Georgia', bold: true
+      });
+      sld.addText(slide.quote || slide.title || '', {
+        x: 0.9, y: 1.6, w: 10.5, h: 3,
+        fontSize: 22, color: '1A2A38', italic: true,
+        fontFace: 'Calibri', lineSpacingMultiple: 1.4
+      });
+      if(slide.attribution){
+        sld.addText('\u2014 ' + slide.attribution, {
+          x: 0.9, y: 4.8, w: 10, h: 0.4,
+          fontSize: 13, color: DGREY, fontFace: 'Calibri'
+        });
+      }
+      if(slide.notes) sld.addNotes(slide.notes);
+      return;
+    }
+
+    // ── STANDARD SLIDES ───────────────────────────────────────────
+    // Title bar background strip
+    sld.addShape(prs.ShapeType.rect, {
+      x: 0, y: 0.08, w: '100%', h: 1.15,
+      fill: { color: NAVY }
+    });
+    // Title
+    sld.addText(slide.title || '', {
+      x: 0.4, y: 0.15, w: 12, h: 1,
+      fontSize: 24, color: WHITE, bold: true,
+      fontFace: 'Calibri Light'
+    });
+
+    // ── TWO-COLUMN ────────────────────────────────────────────────
+    if(layout === 'two-column'){
+      var leftItems  = slide.left  || slide.bullets || [];
+      var rightItems = slide.right || [];
+
+      // Left column header
+      if(slide.leftTitle){
+        sld.addText(slide.leftTitle, {
+          x: 0.3, y: 1.45, w: 5.8, h: 0.4,
+          fontSize: 13, color: hexClean(ACCENT)||OCEAN, bold: true, fontFace: 'Calibri'
+        });
+      }
+      leftItems.forEach(function(pt, i){
+        sld.addShape(prs.ShapeType.ellipse, {
+          x: 0.35, y: (slide.leftTitle ? 2.0 : 1.55) + i*0.72, w: 0.15, h: 0.15,
+          fill: { color: OCEAN }
+        });
+        sld.addText(pt, {
+          x: 0.6, y: (slide.leftTitle ? 1.92 : 1.47) + i*0.72, w: 5.5, h: 0.62,
+          fontSize: 13.5, color: '1A2A38', fontFace: 'Calibri',
+          lineSpacingMultiple: 1.2, valign: 'middle'
+        });
+      });
+
+      // Divider
+      sld.addShape(prs.ShapeType.line, {
+        x: 6.4, y: 1.35, w: 0, h: 5.2,
+        line: { color: 'D0DCE8', width: 1 }
+      });
+
+      // Right column header
+      if(slide.rightTitle){
+        sld.addText(slide.rightTitle, {
+          x: 6.6, y: 1.45, w: 5.8, h: 0.4,
+          fontSize: 13, color: hexClean(ACCENT)||OCEAN, bold: true, fontFace: 'Calibri'
+        });
+      }
+      rightItems.forEach(function(pt, i){
+        sld.addShape(prs.ShapeType.ellipse, {
+          x: 6.65, y: (slide.rightTitle ? 2.0 : 1.55) + i*0.72, w: 0.15, h: 0.15,
+          fill: { color: OCEAN }
+        });
+        sld.addText(pt, {
+          x: 6.9, y: (slide.rightTitle ? 1.92 : 1.47) + i*0.72, w: 5.5, h: 0.62,
+          fontSize: 13.5, color: '1A2A38', fontFace: 'Calibri',
+          lineSpacingMultiple: 1.2, valign: 'middle'
+        });
+      });
+
+      if(slide.notes) sld.addNotes(slide.notes);
+      return;
+    }
+
+    // ── TITLE-CONTENT / BULLETS-ONLY ─────────────────────────────
+    var bullets = slide.bullets || slide.points || [];
+    bullets.forEach(function(pt, i){
+      // Bullet dot
+      sld.addShape(prs.ShapeType.ellipse, {
+        x: 0.35, y: 1.62 + i * 0.72, w: 0.15, h: 0.15,
+        fill: { color: OCEAN }
+      });
+      // Bullet text
+      sld.addText(pt, {
+        x: 0.62, y: 1.52 + i * 0.72, w: 12.0, h: 0.62,
+        fontSize: 14, color: '1A2A38', fontFace: 'Calibri',
+        lineSpacingMultiple: 1.2, valign: 'middle'
+      });
+    });
+
+    // Optional stat boxes
+    if(slide.stats && slide.stats.length){
+      var sw = 12.4 / slide.stats.length;
+      slide.stats.forEach(function(stat, i){
+        sld.addShape(prs.ShapeType.rect, {
+          x: 0.3 + i*(sw+0.15), y: 5.05, w: sw, h: 1.35,
+          fill: { color: 'EBF5FB' }, line: { color: 'B0D4E8', width: 1 }
+        });
+        sld.addText(stat.value || '', {
+          x: 0.3 + i*(sw+0.15), y: 5.1, w: sw, h: 0.65,
+          fontSize: 26, color: NAVY, bold: true, align: 'center', fontFace: 'Calibri'
+        });
+        sld.addText(stat.label || '', {
+          x: 0.3 + i*(sw+0.15), y: 5.75, w: sw, h: 0.55,
+          fontSize: 10, color: DGREY, align: 'center', fontFace: 'Calibri'
+        });
+      });
+    }
+
+    if(slide.notes) sld.addNotes(slide.notes);
+  });
+
+  // ── Download ─────────────────────────────────────────────────────
+  var fname = (jsonData.title || 'presentation').replace(/[^a-zA-Z0-9\s-]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0,50) + '.pptx';
+  prs.writeFile({ fileName: fname });
+  toast('\u2713 ' + fname + ' downloaded!');
+
+  // Show download button for re-download
+  var btn = document.getElementById('pptxDownloadBtn');
+  if(btn){ btn.style.display = 'inline-block'; }
+}
+
+window._lastPptxData = null;
+
+function downloadLastPptx(){
+  if(window._lastPptxData) buildPptx(window._lastPptxData);
+  else toast('Generate a presentation first');
+}
+
+// Parse AI response and trigger pptx build
+function tryBuildPptxFromResponse(text){
+  if(_mode !== 'pptx') return false;
+  // Extract JSON from the response
+  var jsonStr = text.trim();
+  // Remove markdown code fences if present
+  jsonStr = jsonStr.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  try {
+    var data = JSON.parse(jsonStr);
+    if(data && data.slides && data.slides.length){
+      window._lastPptxData = data;
+      buildPptx(data);
+      return true;
+    }
+  } catch(e) {
+    // Not pure JSON — try to extract JSON block
+    var match = text.match(/\{[\s\S]*"slides"\s*:\s*\[[\s\S]*\]\s*\}/);
+    if(match){
+      try {
+        var data2 = JSON.parse(match[0]);
+        if(data2 && data2.slides){
+          window._lastPptxData = data2;
+          buildPptx(data2);
+          return true;
+        }
+      } catch(e2) {}
+    }
+  }
+  return false;
+}
+// ─────────────────────────────────────────────────────────────────
+
+
+// ── REAL WORD DOCUMENT GENERATOR (docx.js — proper binary .docx) ────
+var _lastWordData = null;
+
+function wordPrompt(type) {
+  var prompts = {
+    'report':   'Write a comprehensive business performance report for Q3 2025 for a B2B AI SaaS company called NexAgent by Corverxis Technologies. Include sections: Executive Summary, Financial Performance, Product Updates, Customer Metrics, Team Highlights, Challenges & Risks, and Q4 Outlook. Write full professional prose for each section.',
+    'proposal': 'Write a detailed project proposal for implementing an AI automation system at a mid-sized financial services firm. Include sections: Executive Summary, Problem Statement, Proposed Solution, Scope of Work, Timeline, Investment & ROI, Team & Credentials, and Next Steps.',
+    'letter':   'Write a formal business letter from Sampson Kontomah CEO of Corverxis Technologies to a potential enterprise client proposing an AI integration partnership. Include company introduction, value proposition, specific benefits, and a professional call to action.',
+    'sop':      'Write a detailed Standard Operating Procedure for onboarding a new enterprise client onto the NexAgent AI platform. Include sections: Purpose, Scope, Roles & Responsibilities, Step-by-Step Procedure with at least 10 numbered steps, Quality Checks, and Document Control.',
+    'contract': 'Write a professional Software Services Agreement between Corverxis Technologies Ltd and a client company. Include sections: Parties & Definitions, Services Description, Payment Terms, Intellectual Property, Confidentiality, Data Protection, Limitation of Liability, Termination, and Governing Law.',
+    'memo':     'Write an executive internal memo from the CEO of Corverxis Technologies to all staff announcing the launch of NexGen Chat and NexAgent Studio. Include purpose, product highlights, launch timeline, team recognition, and next steps.',
+    'custom':   'Write a professional document about [YOUR TOPIC HERE]. Replace with your actual subject and document type.'
+  };
+  var ta = document.getElementById('chatIn');
+  if(ta){ ta.value = prompts[type] || prompts['custom']; autoResize(ta); ta.focus(); }
+}
+
+function buildWordDoc(jsonData) {
+  var D = window.docx;
+  if(!D){
+    // Library not loaded yet — try loading it
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js';
+    s.onload = function(){ buildWordDoc(jsonData); };
+    s.onerror = function(){ toast('Word library unavailable. Try the PDF export instead.'); };
+    document.head.appendChild(s);
+    toast('Loading Word library\u2026');
+    return;
+  }
+
+  var title    = jsonData.title    || 'Document';
+  var subtitle = jsonData.subtitle || '';
+  var author   = jsonData.author   || 'Corverxis Technologies';
+  var date     = jsonData.date     || new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  var sections = jsonData.sections || [];
+
+  var NAVY  = '0F2645';
+  var OCEAN = '0099CC';
+  var GREY  = '5A84A8';
+  var BLACK = '1A2A38';
+  var WHITE = 'FFFFFF';
+  var LGREY = 'EBF5FB';
+
+  var B  = D.BorderStyle.SINGLE;
+  var bdr = function(c){ return {style:B,size:1,color:c||'D0DCE8'}; };
+  var borders = function(c){ return {top:bdr(c),bottom:bdr(c),left:bdr(c),right:bdr(c)}; };
+
+  var children = [];
+
+  // ── Cover header ────────────────────────────────────────────────
+  // Corverxis brand line
+  children.push(new D.Paragraph({
+    spacing:{after:60},
+    children:[new D.TextRun({text:'CORVERXIS TECHNOLOGIES',font:'Arial',size:16,color:OCEAN,characterSpacing:80})]
+  }));
+  // Title
+  children.push(new D.Paragraph({
+    spacing:{after:80},
+    border:{bottom:{style:B,size:12,color:OCEAN,space:6}},
+    children:[new D.TextRun({text:title,font:'Arial',size:52,bold:true,color:NAVY})]
+  }));
+  // Subtitle
+  if(subtitle){
+    children.push(new D.Paragraph({
+      spacing:{after:60},
+      children:[new D.TextRun({text:subtitle,font:'Arial',size:26,color:GREY})]
+    }));
+  }
+  // Meta line
+  children.push(new D.Paragraph({
+    spacing:{after:400},
+    children:[
+      new D.TextRun({text:author,font:'Arial',size:18,color:GREY}),
+      new D.TextRun({text:'  \u00b7  ',font:'Arial',size:18,color:GREY}),
+      new D.TextRun({text:date,font:'Arial',size:18,color:GREY})
+    ]
+  }));
+
+  // ── Sections ───────────────────────────────────────────────────
+  sections.forEach(function(sec){
+    var level = sec.level || 1;
+
+    // Heading
+    var hdgRun = new D.TextRun({
+      text: sec.heading || '',
+      font: 'Arial',
+      size: level===1 ? 32 : level===2 ? 26 : 22,
+      bold: true,
+      color: level===1 ? NAVY : level===2 ? OCEAN : BLACK
+    });
+    var hdgPara = new D.Paragraph({
+      heading: level===1 ? D.HeadingLevel.HEADING_1 : level===2 ? D.HeadingLevel.HEADING_2 : D.HeadingLevel.HEADING_3,
+      spacing:{before: level===1?320:200, after:100},
+      children:[hdgRun]
+    });
+    if(level===1){
+      hdgPara = new D.Paragraph({
+        spacing:{before:320,after:100},
+        border:{bottom:{style:B,size:6,color:OCEAN,space:4}},
+        children:[hdgRun]
+      });
+    }
+    children.push(hdgPara);
+
+    // Content paragraphs
+    if(sec.content && sec.content.trim()){
+      sec.content.trim().split(/\n\n+/).forEach(function(para){
+        para = para.trim();
+        if(!para) return;
+        // Handle inline bold **text**
+        var runs = [];
+        var parts = para.split(/\*\*([^*]+)\*\*/);
+        parts.forEach(function(p,i){
+          if(!p) return;
+          runs.push(new D.TextRun({text:p, font:'Arial', size:22, color:BLACK, bold:(i%2===1)}));
+        });
+        children.push(new D.Paragraph({
+          alignment: D.AlignmentType.JUSTIFIED,
+          spacing:{after:120},
+          children: runs.length ? runs : [new D.TextRun({text:para,font:'Arial',size:22,color:BLACK})]
+        }));
+      });
+    }
+
+    // Bullet list
+    if(sec.bullets && sec.bullets.length){
+      sec.bullets.forEach(function(b){
+        children.push(new D.Paragraph({
+          numbering:{reference:'bullets',level:0},
+          spacing:{after:60},
+          children:[new D.TextRun({text:b,font:'Arial',size:22,color:BLACK})]
+        }));
+      });
+      children.push(new D.Paragraph({spacing:{after:60},children:[new D.TextRun({text:'',font:'Arial',size:22})]}));
+    }
+
+    // Numbered list
+    if(sec.numbered && sec.numbered.length){
+      sec.numbered.forEach(function(n){
+        children.push(new D.Paragraph({
+          numbering:{reference:'numbers',level:0},
+          spacing:{after:60},
+          children:[new D.TextRun({text:n,font:'Arial',size:22,color:BLACK})]
+        }));
+      });
+      children.push(new D.Paragraph({spacing:{after:60},children:[new D.TextRun({text:'',font:'Arial',size:22})]}));
+    }
+
+    // Table
+    if(sec.table && sec.table.headers && sec.table.rows){
+      var colCount = sec.table.headers.length;
+      var colW = Math.floor(9360/colCount);
+      var colWidths = sec.table.headers.map(function(){ return colW; });
+
+      var rows = [];
+      // Header row
+      rows.push(new D.TableRow({
+        tableHeader:true,
+        children: sec.table.headers.map(function(h,ci){
+          return new D.TableCell({
+            borders:borders(NAVY),
+            shading:{fill:NAVY,type:D.ShadingType.CLEAR},
+            width:{size:colWidths[ci],type:D.WidthType.DXA},
+            margins:{top:80,bottom:80,left:120,right:120},
+            children:[new D.Paragraph({children:[new D.TextRun({text:h,font:'Arial',size:18,bold:true,color:WHITE})]})]
+          });
+        })
+      }));
+      // Data rows
+      sec.table.rows.forEach(function(row,ri){
+        rows.push(new D.TableRow({
+          children: row.map(function(cell,ci){
+            return new D.TableCell({
+              borders:borders('D0DCE8'),
+              shading:{fill:ri%2===0?WHITE:LGREY,type:D.ShadingType.CLEAR},
+              width:{size:colWidths[ci],type:D.WidthType.DXA},
+              margins:{top:80,bottom:80,left:120,right:120},
+              children:[new D.Paragraph({children:[new D.TextRun({text:String(cell||''),font:'Arial',size:20,color:BLACK})]})]
+            });
+          })
+        }));
+      });
+
+      children.push(new D.Table({
+        width:{size:9360,type:D.WidthType.DXA},
+        columnWidths:colWidths,
+        rows:rows
+      }));
+      children.push(new D.Paragraph({spacing:{after:120},children:[new D.TextRun({text:'',font:'Arial',size:22})]}));
+    }
+  });
+
+  // ── Footer note ─────────────────────────────────────────────────
+  children.push(new D.Paragraph({children:[new D.PageBreak()]}));
+  children.push(new D.Paragraph({
+    spacing:{before:200},
+    border:{top:{style:B,size:4,color:'D0DCE8',space:6}},
+    children:[new D.TextRun({
+      text:'Generated by NexGen Chat  \u00b7  Corverxis Technologies  \u00b7  '+date,
+      font:'Arial',size:16,color:GREY
+    })]
+  }));
+
+  // ── Build document ──────────────────────────────────────────────
+  var doc = new D.Document({
+    creator: 'NexGen Chat \u00b7 Corverxis Technologies',
+    title: title,
+    numbering:{
+      config:[
+        {reference:'bullets',levels:[{level:0,format:D.LevelFormat.BULLET,text:'\u2022',
+          alignment:D.AlignmentType.LEFT,
+          style:{paragraph:{indent:{left:720,hanging:360}}}}]},
+        {reference:'numbers',levels:[{level:0,format:D.LevelFormat.DECIMAL,text:'%1.',
+          alignment:D.AlignmentType.LEFT,
+          style:{paragraph:{indent:{left:720,hanging:360}}}}]}
+      ]
+    },
+    styles:{
+      default:{document:{run:{font:'Arial',size:22,color:BLACK}}},
+      paragraphStyles:[
+        {id:'Heading1',name:'Heading 1',basedOn:'Normal',next:'Normal',quickFormat:true,
+          run:{size:32,bold:true,font:'Arial',color:NAVY},
+          paragraph:{spacing:{before:320,after:100},outlineLevel:0}},
+        {id:'Heading2',name:'Heading 2',basedOn:'Normal',next:'Normal',quickFormat:true,
+          run:{size:26,bold:true,font:'Arial',color:OCEAN},
+          paragraph:{spacing:{before:200,after:80},outlineLevel:1}},
+        {id:'Heading3',name:'Heading 3',basedOn:'Normal',next:'Normal',quickFormat:true,
+          run:{size:22,bold:true,font:'Arial',color:BLACK},
+          paragraph:{spacing:{before:160,after:60},outlineLevel:2}}
+      ]
+    },
+    sections:[{
+      properties:{
+        page:{
+          size:{width:12240,height:15840},
+          margin:{top:1440,right:1440,bottom:1440,left:1440}
+        }
+      },
+      headers:{
+        default:new D.Header({children:[
+          new D.Paragraph({
+            spacing:{after:0},
+            border:{bottom:{style:B,size:6,color:OCEAN,space:3}},
+            children:[
+              new D.TextRun({text:title,font:'Arial',size:16,color:NAVY,bold:true}),
+              new D.TextRun({text:'\t',font:'Arial',size:16}),
+              new D.TextRun({text:'Corverxis Technologies',font:'Arial',size:16,color:GREY})
+            ],
+            tabStops:[{type:D.TabStopType.RIGHT,position:D.TabStopPosition.MAX}]
+          })
+        ]})
+      },
+      footers:{
+        default:new D.Footer({children:[
+          new D.Paragraph({
+            spacing:{before:0},
+            border:{top:{style:B,size:4,color:'D0DCE8',space:3}},
+            children:[
+              new D.TextRun({text:'Page ',font:'Arial',size:16,color:GREY}),
+              new D.TextRun({children:[D.PageNumber.CURRENT],font:'Arial',size:16,color:GREY}),
+              new D.TextRun({text:' of ',font:'Arial',size:16,color:GREY}),
+              new D.TextRun({children:[D.PageNumber.TOTAL_PAGES],font:'Arial',size:16,color:GREY}),
+              new D.TextRun({text:'\t'+date,font:'Arial',size:16,color:GREY})
+            ],
+            tabStops:[{type:D.TabStopType.RIGHT,position:D.TabStopPosition.MAX}]
+          })
+        ]})
+      },
+      children: children
+    }]
+  });
+
+  D.Packer.toBlob(doc).then(function(blob){
+    var fname = title.replace(/[^a-zA-Z0-9\s-]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0,50)+'.docx';
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+    toast('\u2713 '+fname+' downloaded \u2014 opens in Word!');
+    var btn = document.getElementById('wordDownloadBtn');
+    if(btn) btn.style.display = 'inline-block';
+  }).catch(function(e){
+    console.error('docx error:', e);
+    toast('Word error: '+e.message+'. Try again.');
+  });
+}
+
+window._lastWordData = null;
+function downloadLastWord(){
+  if(window._lastWordData) buildWordDoc(window._lastWordData);
+  else toast('Generate a document first');
+}
+function tryBuildWordFromResponse(text){
+  if(_mode !== 'word') return false;
+  var jsonStr = text.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  try {
+    var data = JSON.parse(jsonStr);
+    if(data && data.sections && data.sections.length){ window._lastWordData=data; buildWordDoc(data); return true; }
+  } catch(e){
+    var match = text.match(/\{[\s\S]*?"sections"\s*:\s*\[[\s\S]*?\]\s*\}/);
+    if(match){ try{ var d=JSON.parse(match[0]); if(d&&d.sections){ window._lastWordData=d; buildWordDoc(d); return true; } }catch(e2){} }
+  }
+  return false;
 }
 // ─────────────────────────────────────────────────────────────────
 
@@ -1413,20 +2283,103 @@ function showDriveInstructions(){
 })(window);
 // ─────────────────────────────────────────────────────────────────
 
+
+// ── MODES ─────────────────────────────────────────────────────────
+var _mode = 'chat';
+var _visionImg = null; // base64 data url of attached vision image
+
+function setMode(mode) {
+  _mode = mode;
+  // Update mode buttons
+  ['chat','vision','graphics','pptx','kb','word'].forEach(function(m) {
+    var btn = document.getElementById('mode' + m.charAt(0).toUpperCase() + m.slice(1));
+    if(btn) btn.className = 'mode-btn' + (m === mode ? ' active' : '');
+  });
+  // Show/hide panels
+  var panels = { vision:'panelVision', graphics:'panelGraphics', pptx:'panelPptx', kb:'panelKb', word:'panelWord' };
+  Object.keys(panels).forEach(function(m) {
+    var el = document.getElementById(panels[m]);
+    if(!el) return;
+    el.className = 'mode-panel' + (m === mode ? ' show' : '');
+  });
+  // Position fixed panels below the topbar + mode-bar
+  if(mode !== 'chat') {
+    var bar = document.getElementById('modeBar');
+    if(bar) {
+      var rect = bar.getBoundingClientRect();
+      Object.values(panels).forEach(function(pid){
+        var p = document.getElementById(pid);
+        if(p) p.style.top = rect.bottom + 'px';
+      });
+    }
+  }
+  // Update placeholder
+  var ta = document.getElementById('chatIn');
+  if(ta) {
+    var ph = {
+      chat:     'Message NexGen Chat\u2026',
+      vision:   'Upload an image above, then ask anything about it\u2026',
+      graphics: 'Describe what you want to create \u2014 SVG, infographic, brand palette\u2026',
+      pptx:     'Describe your presentation \u2014 topic, audience, number of slides\u2026',
+      kb:       'Paste your content or describe what knowledge base to build\u2026'
+    };
+    ta.placeholder = ph[mode] || ph.chat;
+  }
+  // Update system prompt hint
+  updateModeSystem();
+}
+
+function updateModeSystem() {
+  window._modeSystem = {
+    chat:     '',
+    vision:   'You are a Vision AI specialist. Analyse images with extreme detail and accuracy. Extract text, data, objects, and insights. Always structure your findings clearly with headers and bullet points.',
+    graphics: 'You are a professional graphic designer and SVG expert. When creating graphics: always output complete, valid SVG code that renders correctly in browsers. Use professional colour palettes. For design briefs, be specific with hex codes, font names, spacing values and dimensions. When generating SVGs, make them visually polished and production-ready.',
+    pptx:     'You are a PowerPoint presentation expert. The user wants an actual .pptx file. Respond ONLY with a valid JSON object (no markdown, no explanation, just raw JSON). Use this exact structure:\n\n{"title":"Deck Title","theme":"navy","slides":[{"title":"Slide Title","layout":"title-content","bullets":["Point 1","Point 2","Point 3"],"notes":"Speaker notes here","accent":"#00C8FF"},{"title":"Slide 2","layout":"two-column","left":["Left col point 1","Left col point 2"],"right":["Right col point 1","Right col point 2"],"notes":"Notes"}]}\n\nLayouts: title-only, title-content, two-column, bullets-only, quote. Include 8-15 slides. Bullets max 6 words each. Be specific and professional.',
+    word:     'You are a professional business writer and document specialist. The user wants an actual .docx Word document. Respond ONLY with a valid JSON object (no markdown, no explanation, just raw JSON). Use this exact structure: {"title":"Document Title","subtitle":"Optional subtitle","author":"Author Name","date":"Date","sections":[{"heading":"Section Heading","level":1,"content":"Full paragraph text here. Write complete, professional prose.","bullets":[]},{"heading":"Subsection","level":2,"content":"","bullets":["Bullet point 1","Bullet point 2"]}]}. Include 4-8 sections. Write full professional content, not placeholders. Bullets array can be empty [] if using content prose instead.',
+    kb:       'You are a knowledge management specialist. Structure all outputs as well-organised knowledge bases with clear categories, headers, and searchable content. Always include: a master index, categorised sections, and actionable quick-reference cards.'
+  }[_mode] || '';
+}
+
+function modePrompt(text) {
+  var ta = document.getElementById('chatIn');
+  if(ta){ ta.value = text; autoResize(ta); ta.focus(); }
+}
+
+function visionPrompt(text) {
+  if(!_visionImg) { toast('Upload an image first'); return; }
+  var ta = document.getElementById('chatIn');
+  if(ta){ ta.value = text; autoResize(ta); ta.focus(); }
+}
+
+function onVisionFile(input) {
+  var file = input.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    _visionImg = e.target.result;
+    var preview = document.getElementById('visionPreview');
+    var fname   = document.getElementById('visionFileName');
+    if(preview){ preview.src = _visionImg; preview.style.display = 'block'; }
+    if(fname)  { fname.textContent = file.name + ' (' + (file.size/1024).toFixed(0) + 'KB)'; }
+    toast('\u2713 Image ready \u2014 ask anything about it');
+  };
+  reader.readAsDataURL(file);
+}
+// ─────────────────────────────────────────────────────────────────
+
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════ -->
 <!-- NexGen MFA Challenge Wall                                      -->
 <!-- ══════════════════════════════════════════════════════════════ -->
-<div id="nxMFAWall" style="display:none;position:fixed;inset:0;background:rgba(11,23,37,.97);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(18px);padding:20px">
-  <div style="background:#0D1B2E;border:1px solid rgba(0,200,255,.2);border-radius:14px;padding:36px;width:100%;max-width:400px;text-align:center">
+<div id="nxMFAWall" style="display:none;position:fixed;inset:0;background:rgba(15,38,69,.97);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(18px);padding:20px">
+  <div style="background:#162E52;border:1px solid rgba(0,200,255,.2);border-radius:14px;padding:36px;width:100%;max-width:400px;text-align:center">
     <svg width="44" height="44" viewBox="0 0 28 28" fill="none" style="margin-bottom:16px"><polygon points="14,2 24,7.5 24,20.5 14,26 4,20.5 4,7.5" stroke="#00C8FF" stroke-width="1.5" fill="none"/><polygon points="14,7 20,10.5 20,17.5 14,21 8,17.5 8,10.5" stroke="#00C8FF" stroke-width="1" fill="none" opacity=".6"/><circle cx="14" cy="14" r="2.5" fill="#00C8FF"/></svg>
     <div style="font-family:monospace;font-size:9px;color:#00C8FF;letter-spacing:3px;margin-bottom:10px">TWO-FACTOR AUTHENTICATION</div>
     <div style="font-size:19px;font-weight:700;color:#E8F2FB;margin-bottom:8px;letter-spacing:-.4px">Enter your authentication code</div>
     <div style="font-size:12.5px;color:#8BAFC8;line-height:1.8;margin-bottom:24px">Open your authenticator app (Google Authenticator, Authy, etc.) and enter the 6-digit code for NexGen.</div>
     <div id="nxMFAErr" style="display:none;background:rgba(255,77,77,.08);border:1px solid rgba(255,77,77,.2);border-radius:7px;padding:9px 13px;font-family:monospace;font-size:10px;color:#FF6B6B;margin-bottom:14px;text-align:left"></div>
     <input id="nxMFACode" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
-      style="width:100%;background:#0B1725;border:1px solid rgba(0,200,255,.2);border-radius:9px;padding:14px;font-family:monospace;font-size:26px;letter-spacing:10px;text-align:center;color:#00C8FF;outline:none;box-sizing:border-box;margin-bottom:16px"
+      style="width:100%;background:#0F2645;border:1px solid rgba(0,200,255,.2);border-radius:9px;padding:14px;font-family:monospace;font-size:26px;letter-spacing:10px;text-align:center;color:#00C8FF;outline:none;box-sizing:border-box;margin-bottom:16px"
       onkeydown="if(event.key==='Enter')nxMFAVerify()"
       oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/>
     <button id="nxMFABtn" onclick="nxMFAVerify()"
@@ -1439,8 +2392,8 @@ function showDriveInstructions(){
 <!-- ══════════════════════════════════════════════════════════════ -->
 <!-- NexGen MFA Settings Panel (inject into account/settings area)  -->
 <!-- ══════════════════════════════════════════════════════════════ -->
-<div id="nxMFASettings" style="display:none;position:fixed;inset:0;background:rgba(11,23,37,.95);z-index:99997;align-items:center;justify-content:center;backdrop-filter:blur(14px);padding:20px">
-  <div style="background:#0D1B2E;border:1px solid rgba(0,200,255,.2);border-radius:14px;padding:36px;width:100%;max-width:480px">
+<div id="nxMFASettings" style="display:none;position:fixed;inset:0;background:rgba(15,38,69,.95);z-index:99997;align-items:center;justify-content:center;backdrop-filter:blur(14px);padding:20px">
+  <div style="background:#162E52;border:1px solid rgba(0,200,255,.2);border-radius:14px;padding:36px;width:100%;max-width:480px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
       <div>
         <div style="font-family:monospace;font-size:9px;color:#00C8FF;letter-spacing:2px;margin-bottom:6px">SECURITY SETTINGS</div>
@@ -1450,7 +2403,7 @@ function showDriveInstructions(){
         style="background:none;border:none;color:#4A6C84;font-size:22px;cursor:pointer;padding:4px"
         onmouseover="this.style.color='#E8F2FB'" onmouseout="this.style.color='#4A6C84'">&#x2715;</button>
     </div>
-    <div style="background:#0B1725;border:1px solid rgba(0,200,255,.1);border-radius:10px;padding:18px;margin-bottom:20px">
+    <div style="background:#0F2645;border:1px solid rgba(0,200,255,.1);border-radius:10px;padding:18px;margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div style="font-size:13px;font-weight:600;color:#E8F2FB">Authenticator App (TOTP)</div>
         <span id="nxMFAStatus" style="font-family:monospace;font-size:10px;color:#8BAFC8">Checking&#x2026;</span>
@@ -1465,16 +2418,16 @@ function showDriveInstructions(){
     </div>
     <div id="nxMFASettingsErr" style="display:none;background:rgba(255,77,77,.08);border:1px solid rgba(255,77,77,.2);border-radius:7px;padding:9px 13px;font-family:monospace;font-size:10px;color:#FF6B6B;margin-bottom:14px"></div>
     <!-- Enroll panel (shown after clicking Enable) -->
-    <div id="nxMFAEnrollPanel" style="display:none;background:#0B1725;border:1px solid rgba(0,200,255,.12);border-radius:10px;padding:20px">
+    <div id="nxMFAEnrollPanel" style="display:none;background:#0F2645;border:1px solid rgba(0,200,255,.12);border-radius:10px;padding:20px">
       <div style="font-size:12px;font-weight:600;color:#E8F2FB;margin-bottom:12px">Step 1 — Scan this QR code with your authenticator app</div>
       <div style="text-align:center;margin-bottom:14px">
         <img id="nxMFAQR" src="" alt="QR Code" style="width:160px;height:160px;border-radius:8px;background:#fff;padding:8px"/>
       </div>
       <div style="font-size:11px;color:#8BAFC8;margin-bottom:6px">Or enter this secret key manually:</div>
-      <div id="nxMFASecret" style="font-family:monospace;font-size:11px;color:#00C8FF;background:#0D1B2E;border:1px solid rgba(0,200,255,.15);border-radius:6px;padding:8px 12px;word-break:break-all;margin-bottom:16px;letter-spacing:2px"></div>
+      <div id="nxMFASecret" style="font-family:monospace;font-size:11px;color:#00C8FF;background:#162E52;border:1px solid rgba(0,200,255,.15);border-radius:6px;padding:8px 12px;word-break:break-all;margin-bottom:16px;letter-spacing:2px"></div>
       <div style="font-size:12px;font-weight:600;color:#E8F2FB;margin-bottom:8px">Step 2 — Enter the 6-digit code to confirm</div>
       <input id="nxMFAEnrollCode" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
-        style="width:100%;background:#0D1B2E;border:1px solid rgba(0,200,255,.2);border-radius:8px;padding:11px;font-family:monospace;font-size:22px;letter-spacing:8px;text-align:center;color:#00C8FF;outline:none;box-sizing:border-box;margin-bottom:12px"
+        style="width:100%;background:#162E52;border:1px solid rgba(0,200,255,.2);border-radius:8px;padding:11px;font-family:monospace;font-size:22px;letter-spacing:8px;text-align:center;color:#00C8FF;outline:none;box-sizing:border-box;margin-bottom:12px"
         oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/>
       <button id="nxMFAConfirmBtn" onclick="nxMFAConfirmEnroll()"
         style="width:100%;padding:12px;background:#00C8FF;color:#04080E;border:none;border-radius:8px;font-family:monospace;font-size:10.5px;font-weight:700;cursor:pointer;transition:opacity .15s"
