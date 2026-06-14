@@ -1,0 +1,259 @@
+// NexGen File Server — builds real .docx and .pptx from JSON
+const http  = require('http');
+const docx  = require('/home/claude/.npm-global/lib/node_modules/docx');
+const PptxGenJS = require('/home/claude/.npm-global/lib/node_modules/pptxgenjs');
+
+const PORT = 7432;
+
+// ── WORD BUILDER ─────────────────────────────────────────────────
+async function buildDocx(data) {
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    Header, Footer, BorderStyle, AlignmentType, WidthType, ShadingType,
+    LevelFormat, TabStopType, TabStopPosition, PageNumber, HeadingLevel } = docx;
+
+  const NAVY='0F2645', OCEAN='0099CC', GREY='5A84A8', BLACK='1A2A38', WHITE='FFFFFF', LGREY='EBF5FB';
+  const BS = BorderStyle.SINGLE;
+  const bdr = c => ({style:BS,size:1,color:c||'D0DCE8'});
+  const allB = c => ({top:bdr(c),bottom:bdr(c),left:bdr(c),right:bdr(c)});
+
+  const title    = data.title    || 'Document';
+  const subtitle = data.subtitle || '';
+  const author   = data.author   || 'Corverxis Technologies';
+  const date     = data.date     || new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const sections = data.sections || [];
+
+  const kids = [];
+
+  // Cover
+  kids.push(new Paragraph({ spacing:{after:60}, children:[
+    new TextRun({ text:'CORVERXIS TECHNOLOGIES', font:'Arial', size:16, color:OCEAN, characterSpacing:80 })
+  ]}));
+  kids.push(new Paragraph({ spacing:{after:100}, border:{bottom:{style:BS,size:14,color:OCEAN,space:6}}, children:[
+    new TextRun({ text:title, font:'Arial', size:56, bold:true, color:NAVY })
+  ]}));
+  if(subtitle) kids.push(new Paragraph({ spacing:{after:80}, children:[
+    new TextRun({ text:subtitle, font:'Arial', size:28, color:GREY })
+  ]}));
+  kids.push(new Paragraph({ spacing:{after:400}, children:[
+    new TextRun({ text:`${author}  ·  ${date}`, font:'Arial', size:18, color:GREY })
+  ]}));
+
+  for(const sec of sections) {
+    const lvl = sec.level || 1;
+    const hRun = new TextRun({ text:sec.heading||'', font:'Arial',
+      size:lvl===1?34:lvl===2?26:22, bold:true,
+      color:lvl===1?NAVY:lvl===2?OCEAN:BLACK });
+    if(lvl===1) kids.push(new Paragraph({ spacing:{before:320,after:100},
+      border:{bottom:{style:BS,size:8,color:OCEAN,space:4}}, children:[hRun] }));
+    else kids.push(new Paragraph({ spacing:{before:200,after:80}, children:[hRun] }));
+
+    if(sec.content?.trim()) {
+      for(const para of sec.content.trim().split(/\n\n+/)) {
+        if(!para.trim()) continue;
+        const runs = [];
+        para.split(/\*\*([^*]+)\*\*/).forEach((p,i) => {
+          if(p) runs.push(new TextRun({text:p,font:'Arial',size:22,color:BLACK,bold:i%2===1}));
+        });
+        kids.push(new Paragraph({ alignment:AlignmentType.JUSTIFIED, spacing:{after:120},
+          children: runs.length ? runs : [new TextRun({text:para,font:'Arial',size:22,color:BLACK})] }));
+      }
+    }
+
+    if(sec.bullets?.length) {
+      for(const b of sec.bullets)
+        kids.push(new Paragraph({ numbering:{reference:'bullets',level:0}, spacing:{after:60},
+          children:[new TextRun({text:b,font:'Arial',size:22,color:BLACK})] }));
+      kids.push(new Paragraph({spacing:{after:60},children:[new TextRun({text:'',font:'Arial',size:22})]}));
+    }
+
+    if(sec.numbered?.length) {
+      for(const n of sec.numbered)
+        kids.push(new Paragraph({ numbering:{reference:'numbers',level:0}, spacing:{after:60},
+          children:[new TextRun({text:n,font:'Arial',size:22,color:BLACK})] }));
+      kids.push(new Paragraph({spacing:{after:60},children:[new TextRun({text:'',font:'Arial',size:22})]}));
+    }
+
+    if(sec.table?.headers && sec.table?.rows) {
+      const cw = Math.floor(9360/sec.table.headers.length);
+      const rows = [];
+      rows.push(new TableRow({ tableHeader:true, children:
+        sec.table.headers.map(h => new TableCell({
+          borders:allB(NAVY), shading:{fill:NAVY,type:ShadingType.CLEAR},
+          width:{size:cw,type:WidthType.DXA}, margins:{top:80,bottom:80,left:120,right:120},
+          children:[new Paragraph({children:[new TextRun({text:h,font:'Arial',size:18,bold:true,color:WHITE})]})]
+        }))
+      }));
+      sec.table.rows.forEach((row,ri) => rows.push(new TableRow({ children:
+        row.map(cell => new TableCell({
+          borders:allB('D0DCE8'), shading:{fill:ri%2===0?WHITE:LGREY,type:ShadingType.CLEAR},
+          width:{size:cw,type:WidthType.DXA}, margins:{top:80,bottom:80,left:120,right:120},
+          children:[new Paragraph({children:[new TextRun({text:String(cell||''),font:'Arial',size:20,color:BLACK})]})]
+        }))
+      })));
+      kids.push(new Table({ width:{size:9360,type:WidthType.DXA},
+        columnWidths:sec.table.headers.map(()=>cw), rows }));
+      kids.push(new Paragraph({spacing:{after:120},children:[new TextRun({text:'',font:'Arial',size:22})]}));
+    }
+  }
+
+  kids.push(new Paragraph({ spacing:{before:200},
+    border:{top:{style:BS,size:4,color:'D0DCE8',space:6}},
+    children:[new TextRun({text:`Generated by NexGen Chat  ·  Corverxis Technologies  ·  ${date}`,font:'Arial',size:16,color:GREY})]
+  }));
+
+  const doc = new Document({
+    creator:'NexGen Chat · Corverxis Technologies', title,
+    numbering:{ config:[
+      {reference:'bullets',levels:[{level:0,format:LevelFormat.BULLET,text:'\u2022',
+        alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:720,hanging:360}}}}]},
+      {reference:'numbers',levels:[{level:0,format:LevelFormat.DECIMAL,text:'%1.',
+        alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:720,hanging:360}}}}]}
+    ]},
+    styles:{
+      default:{document:{run:{font:'Arial',size:22,color:BLACK}}},
+      paragraphStyles:[
+        {id:'Heading1',name:'Heading 1',basedOn:'Normal',next:'Normal',quickFormat:true,
+          run:{size:34,bold:true,font:'Arial',color:NAVY},paragraph:{spacing:{before:320,after:100},outlineLevel:0}},
+        {id:'Heading2',name:'Heading 2',basedOn:'Normal',next:'Normal',quickFormat:true,
+          run:{size:26,bold:true,font:'Arial',color:OCEAN},paragraph:{spacing:{before:200,after:80},outlineLevel:1}},
+      ]
+    },
+    sections:[{
+      properties:{page:{size:{width:12240,height:15840},margin:{top:1440,right:1440,bottom:1440,left:1440}}},
+      headers:{default:new Header({children:[
+        new Paragraph({ spacing:{after:0}, border:{bottom:{style:BS,size:6,color:OCEAN,space:3}},
+          tabStops:[{type:TabStopType.RIGHT,position:TabStopPosition.MAX}],
+          children:[
+            new TextRun({text:title,font:'Arial',size:16,color:NAVY,bold:true}),
+            new TextRun({text:'\t',font:'Arial',size:16}),
+            new TextRun({text:'Corverxis Technologies',font:'Arial',size:16,color:GREY})
+          ]
+        })
+      ]})},
+      footers:{default:new Footer({children:[
+        new Paragraph({ border:{top:{style:BS,size:4,color:'D0DCE8',space:3}},
+          tabStops:[{type:TabStopType.RIGHT,position:TabStopPosition.MAX}],
+          children:[
+            new TextRun({text:'Page ',font:'Arial',size:16,color:GREY}),
+            new TextRun({children:[PageNumber.CURRENT],font:'Arial',size:16,color:GREY}),
+            new TextRun({text:' of ',font:'Arial',size:16,color:GREY}),
+            new TextRun({children:[PageNumber.TOTAL_PAGES],font:'Arial',size:16,color:GREY}),
+            new TextRun({text:'\t'+date,font:'Arial',size:16,color:GREY})
+          ]
+        })
+      ]})},
+      children:kids
+    }]
+  });
+
+  return Packer.toBuffer(doc);
+}
+
+// ── PPTX BUILDER ─────────────────────────────────────────────────
+async function buildPptx(data) {
+  const prs = new PptxGenJS();
+  prs.layout  = 'LAYOUT_WIDE';
+  prs.author  = 'NexGen Chat · Corverxis Technologies';
+  prs.company = 'Corverxis Technologies';
+  prs.title   = data.title || 'Presentation';
+
+  const NAVY='0F2645', OCEAN='00C8FF', WHITE='FFFFFF', LGREY='9BC0D8', DGREY='1A2A38';
+  const slides = data.slides || [];
+
+  slides.forEach((sd, si) => {
+    const sld = prs.addSlide();
+
+    if(si === 0 || sd.layout === 'title-only') {
+      sld.background = { color: NAVY };
+      sld.addShape(prs.shapes.RECTANGLE, { x:0, y:0, w:'100%', h:0.06, fill:{color:OCEAN} });
+      sld.addText('CORVERXIS TECHNOLOGIES', { x:0.5,y:0.3,w:8,h:0.3,
+        fontSize:8, fontFace:'Calibri', color:OCEAN, charSpacing:4 });
+      sld.addText(data.title || sd.title || '', { x:0.5,y:0.75,w:11,h:2.2,
+        fontSize:44, fontFace:'Calibri', color:WHITE, bold:true });
+      if(data.subtitle || sd.subtitle)
+        sld.addText(data.subtitle||sd.subtitle||'', { x:0.5,y:3.1,w:9,h:0.5,
+          fontSize:18, fontFace:'Calibri', color:LGREY, italic:true });
+      sld.addText('corverxis.com', { x:0.5,y:7.1,w:5,h:0.25, fontSize:9, fontFace:'Calibri', color:LGREY });
+    } else {
+      sld.background = { color: WHITE };
+      sld.addShape(prs.shapes.RECTANGLE, { x:0,y:0,w:'100%',h:1.1, fill:{color:NAVY} });
+      sld.addShape(prs.shapes.RECTANGLE, { x:0,y:0,w:'100%',h:0.06, fill:{color:OCEAN} });
+      sld.addText(sd.title||'', { x:0.4,y:0.12,w:12.4,h:0.85,
+        fontSize:26, fontFace:'Calibri', color:WHITE, bold:true, valign:'middle' });
+      sld.addText(String(si), { x:12.5,y:7.15,w:0.5,h:0.2,
+        fontSize:8, fontFace:'Calibri', color:'CCCCCC', align:'right' });
+      sld.addText('Corverxis Technologies', { x:0.4,y:7.15,w:5,h:0.2,
+        fontSize:8, fontFace:'Calibri', color:'CCCCCC' });
+
+      const layout = sd.layout || 'title-content';
+      if(layout === 'two-column') {
+        (sd.left||[]).forEach((pt,j) => {
+          sld.addShape(prs.shapes.OVAL, {x:0.42,y:1.75+j*0.72,w:0.14,h:0.14,fill:{color:OCEAN}});
+          sld.addText(pt, {x:0.65,y:1.66+j*0.72,w:5.6,h:0.62,
+            fontSize:14,fontFace:'Calibri',color:DGREY});
+        });
+        sld.addShape(prs.shapes.LINE, {x:6.65,y:1.2,w:0,h:5.8,line:{color:'D0DCE8',width:1}});
+        (sd.right||[]).forEach((pt,j) => {
+          sld.addShape(prs.shapes.OVAL, {x:6.87,y:1.75+j*0.72,w:0.14,h:0.14,fill:{color:OCEAN}});
+          sld.addText(pt, {x:7.1,y:1.66+j*0.72,w:5.6,h:0.62,
+            fontSize:14,fontFace:'Calibri',color:DGREY});
+        });
+      } else {
+        (sd.bullets||sd.points||[]).forEach((pt,j) => {
+          sld.addShape(prs.shapes.OVAL, {x:0.42,y:1.62+j*0.72,w:0.14,h:0.14,fill:{color:OCEAN}});
+          sld.addText(pt, {x:0.65,y:1.52+j*0.72,w:12.1,h:0.62,
+            fontSize:15,fontFace:'Calibri',color:DGREY});
+        });
+      }
+    }
+    if(sd.notes) sld.addNotes(sd.notes);
+  });
+
+  return prs.write({ outputType:'nodebuffer' });
+}
+
+// ── HTTP SERVER ───────────────────────────────────────────────────
+const server = http.createServer(async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if(req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
+  if(req.method !== 'POST')    { res.writeHead(405); res.end(); return; }
+
+  let body = '';
+  req.on('data', chunk => body += chunk);
+  req.on('end', async () => {
+    try {
+      const { type, data } = JSON.parse(body);
+      let buf, fname, mime;
+
+      if(type === 'docx') {
+        buf   = await buildDocx(data);
+        fname = (data.title||'document').replace(/[^a-zA-Z0-9\s]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0,50)+'.docx';
+        mime  = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      } else if(type === 'pptx') {
+        buf   = await buildPptx(data);
+        fname = (data.title||'presentation').replace(/[^a-zA-Z0-9\s]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0,50)+'.pptx';
+        mime  = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      } else {
+        res.writeHead(400); res.end('Unknown type'); return;
+      }
+
+      res.writeHead(200, {
+        'Content-Type': mime,
+        'Content-Disposition': `attachment; filename="${fname}"`,
+        'Content-Length': buf.length
+      });
+      res.end(buf);
+      console.log(`Built ${type}: ${fname} (${buf.length} bytes)`);
+    } catch(e) {
+      console.error('Build error:', e.message);
+      res.writeHead(500); res.end(JSON.stringify({error: e.message}));
+    }
+  });
+});
+
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`NexGen file server running on http://127.0.0.1:${PORT}`);
+});
