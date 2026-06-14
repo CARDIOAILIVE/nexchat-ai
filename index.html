@@ -9,8 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -906,6 +904,10 @@ function appendStreamBubble(modelKey){
   return wrap.querySelector('.bubble');
 }
 function streamUpdate(bubble, text){
+  if(_mode === 'pptx' || _mode === 'word'){
+    bubble.innerHTML = '<div style="padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--dim)">&#x23F3; Building your ' + (_mode==='pptx'?'presentation':'document') + '\u2026</div>';
+    return;
+  }
   bubble.innerHTML = renderWithXAI(text) + '<span class="stream-cursor" style="display:inline-block;width:2px;height:14px;background:var(--accent);animation:dotpop .7s infinite;vertical-align:middle;margin-left:2px"></span>';
   bubble.parentElement.parentElement.scrollIntoView({behavior:'smooth',block:'end'});
 }
@@ -1001,14 +1003,21 @@ async function callNexGen(text, img){
   }
 
   var modeSystemPrompt = window._modeSystem || '';
-  var XAI_BASE = 'You are NexGen Chat, a world-class AI assistant built by Corverxis Technologies. You combine deep expertise with the ability to explain your thinking clearly.\n\nCORE BEHAVIOUR — EXPLAINABLE AI:\nAfter every substantive response, add an EXPLANATION section that reveals:\n1. HOW you approached the problem — your reasoning process step by step\n2. WHY you structured the answer the way you did — what choices you made and why\n3. WHAT you considered but set aside — alternatives or caveats worth knowing\n4. HOW CONFIDENT you are — and where the user should verify or get expert input\n\nFormat the explanation block like this at the end of every answer:\n\n---\n**🧠 How I approached this**\n[2-4 sentences explaining your reasoning process, what information you drew on, and how you structured the answer]\n\n**⚖️ Confidence & caveats**\n[Be honest: what you are confident about, what is uncertain, and what the user should double-check with a specialist or current source]\n---\n\nTONE & STYLE:\n- Write like a brilliant, senior colleague — clear, direct, no jargon unless necessary\n- Use formatting (headers, bullets, tables) only when it genuinely helps clarity\n- Never pad answers. Say what needs to be said, then stop.\n- For simple factual questions, keep the explanation brief (1-2 sentences each)\n- For complex analysis, research, documents or code, give a thorough explanation\n\nSPECIAL MODES — when activated, follow mode-specific instructions AND still include the explanation block.';
-  var finalSystem = modeSystemPrompt
-    ? XAI_BASE + '\n\nMODE-SPECIFIC INSTRUCTIONS (override defaults where relevant):\n' + modeSystemPrompt
-    : XAI_BASE;
+  var XAI_BASE = 'You are NexGen Chat, a world-class AI assistant built by Corverxis Technologies. You combine deep expertise with the ability to explain your thinking clearly.\n\nAFTER EVERY RESPONSE add this block:\n\n---\n**\u{1F9E0} How I approached this**\n[2-4 sentences: reasoning process, information sources, structural choices]\n\n**\u2696\uFE0F Confidence & caveats**\n[what you are confident about, what is uncertain, what to verify with a specialist]\n---\n\nRULES:\n- Write like a brilliant senior colleague — clear, direct, no padding\n- Use formatting only when it genuinely helps\n- Keep XAI brief for simple questions, thorough for complex ones';
+  // File modes get ONLY the mode prompt — no XAI appended (XAI block breaks JSON)
+  var FILE_MODES = ['pptx', 'word'];
+  var finalSystem = FILE_MODES.indexOf(_mode) !== -1
+    ? modeSystemPrompt
+    : (modeSystemPrompt ? XAI_BASE + '\n\n' + modeSystemPrompt : XAI_BASE);
+  // For file modes: prefill assistant turn with { to force JSON output
+  var fileMsgs = msgs;
+  if(FILE_MODES.indexOf(_mode) !== -1){
+    fileMsgs = msgs.concat([{role:'assistant', content:'{'}]);
+  }
   var body = {
     model: MODELS[_model].id,
     max_tokens: 4096,
-    messages: msgs,
+    messages: fileMsgs,
     stream: _stream,
     system: finalSystem
   };
@@ -1053,15 +1062,23 @@ async function callNexGen(text, img){
     _curConv.msgs.push({role:'assistant',content:full,model:_model});
     saveConvs();
     clearDocAtts();
-    // Auto-build pptx if in slides mode
+    // Auto-build pptx if in slides mode — intercept bubble
     if(_mode === 'pptx') {
       var built = tryBuildPptxFromResponse(full);
-      if(!built) toast('Slides generated — refining format, click “Download .pptx” if available');
+      if(built){
+        bubble.innerHTML = '<div style="padding:12px 16px;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);border-radius:10px;font-family:var(--mono);font-size:12px;color:var(--accent)">&#x2705; Your PowerPoint is downloading now.<br><span style="color:var(--dim);font-size:11px">Use <strong style="color:var(--accent)">&#x2B07; Download .pptx</strong> in the panel above to re-download.</span></div>';
+      } else {
+        bubble.innerHTML = '<div style="padding:12px 16px;background:rgba(255,77,77,.07);border:1px solid rgba(255,77,77,.2);border-radius:10px;font-family:var(--mono);font-size:12px;color:#FF6B6B">&#x26A0; Could not build slides. Try a more specific prompt, e.g. "Create a 10-slide pitch deck for an AI startup".</div>';
+      }
     }
-    // Auto-build Word doc if in word mode
+    // Auto-build Word doc if in word mode — intercept bubble
     if(_mode === 'word') {
       var builtW = tryBuildWordFromResponse(full);
-      if(!builtW) toast('Document generated — click “Download .docx” to save');
+      if(builtW){
+        bubble.innerHTML = '<div style="padding:12px 16px;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);border-radius:10px;font-family:var(--mono);font-size:12px;color:var(--accent)">&#x2705; Your Word document is downloading now.<br><span style="color:var(--dim);font-size:11px">Use <strong style="color:var(--accent)">&#x2B07; Download .docx</strong> in the panel above to re-download.</span></div>';
+      } else {
+        bubble.innerHTML = '<div style="padding:12px 16px;background:rgba(255,77,77,.07);border:1px solid rgba(255,77,77,.2);border-radius:10px;font-family:var(--mono);font-size:12px;color:#FF6B6B">&#x26A0; Could not build document. Try a more specific prompt, e.g. "Write a business proposal for an AI services company".</div>';
+      }
     }
     // Increment free usage
     if(_plan==='free'){
@@ -1519,254 +1536,33 @@ function pptxPrompt(type) {
 }
 
 function buildPptx(jsonData) {
-  if(typeof PptxGenJS === 'undefined'){
-    toast('PowerPoint library loading \u2014 try again in a moment');
-    return;
-  }
-
-  var prs = new PptxGenJS();
-  prs.layout   = 'LAYOUT_WIDE';
-  prs.author   = 'NexGen Chat \u00b7 Corverxis Technologies';
-  prs.company  = 'Corverxis Technologies';
-  prs.subject  = jsonData.title || 'Presentation';
-  prs.title    = jsonData.title || 'Presentation';
-
-  // ── Colour scheme ─────────────────────────────────────────────
-  var NAVY   = '0F2645';
-  var OCEAN  = '00C8FF';
-  var WHITE  = 'FFFFFF';
-  var LGREY  = 'E8F2FB';
-  var DGREY  = '5A84A8';
-  var ACCENT = (jsonData.theme === 'ocean') ? '0099CC' : '00C8FF';
-
-  function hexClean(h){ return (h||'').replace('#',''); }
-
-  jsonData.slides.forEach(function(slide, si) {
-    var sld = prs.addSlide();
-
-    // ── Background ───────────────────────────────────────────────
-    sld.background = { color: si === 0 ? NAVY : 'FFFFFF' };
-
-    // ── Accent bar at top ────────────────────────────────────────
-    sld.addShape(prs.ShapeType.rect, {
-      x: 0, y: 0, w: '100%', h: 0.08,
-      fill: { color: OCEAN }
-    });
-
-    // ── Slide number (skip cover) ────────────────────────────────
-    if(si > 0){
-      sld.addText((si).toString(), {
-        x: 12.2, y: 6.8, w: 0.5, h: 0.25,
-        fontSize: 8, color: DGREY, align: 'right',
-        fontFace: 'Calibri'
-      });
-      // Footer brand
-      sld.addText('Corverxis Technologies', {
-        x: 0.3, y: 6.8, w: 4, h: 0.25,
-        fontSize: 8, color: DGREY, align: 'left',
-        fontFace: 'Calibri'
-      });
-    }
-
-    var layout = slide.layout || 'title-content';
-
-    // ── COVER SLIDE ───────────────────────────────────────────────
-    if(si === 0 || layout === 'title-only'){
-      // Corverxis hex logo decoration (simplified shapes)
-      sld.addShape(prs.ShapeType.hexagon, {
-        x: 9.8, y: 0.8, w: 2.2, h: 2.2,
-        line: { color: OCEAN, width: 3 }, fill: { type: 'none' }
-      });
-      sld.addShape(prs.ShapeType.hexagon, {
-        x: 10.2, y: 1.2, w: 1.4, h: 1.4,
-        line: { color: OCEAN, width: 1.5 }, fill: { type: 'none' }
-      });
-
-      // Tagline bar
-      sld.addShape(prs.ShapeType.rect, {
-        x: 0.5, y: 2.4, w: 1.2, h: 0.06,
-        fill: { color: OCEAN }
-      });
-      sld.addText('CORVERXIS TECHNOLOGIES', {
-        x: 0.5, y: 2.6, w: 8, h: 0.35,
-        fontSize: 10, color: OCEAN, bold: false,
-        charSpacing: 4, fontFace: 'Calibri'
-      });
-      sld.addText(slide.title || jsonData.title || 'Presentation', {
-        x: 0.5, y: 3.1, w: 9, h: 1.8,
-        fontSize: 40, color: WHITE, bold: true,
-        fontFace: 'Calibri Light', lineSpacingMultiple: 1.1
-      });
-      if(slide.subtitle){
-        sld.addText(slide.subtitle, {
-          x: 0.5, y: 5.1, w: 8, h: 0.5,
-          fontSize: 16, color: LGREY, fontFace: 'Calibri'
-        });
-      }
-      if(slide.notes){
-        sld.addNotes(slide.notes);
-      }
-      return;
-    }
-
-    // ── SECTION DIVIDER ───────────────────────────────────────────
-    if(layout === 'section'){
-      sld.background = { color: NAVY };
-      sld.addShape(prs.ShapeType.rect, {
-        x: 0, y: 0, w: '100%', h: 0.08, fill: { color: OCEAN }
-      });
-      sld.addText(slide.title || '', {
-        x: 1, y: 2.6, w: 11, h: 1.2,
-        fontSize: 36, color: WHITE, bold: true,
-        fontFace: 'Calibri Light', align: 'center'
-      });
-      if(slide.subtitle){
-        sld.addText(slide.subtitle, {
-          x: 1, y: 3.9, w: 11, h: 0.5,
-          fontSize: 16, color: LGREY, align: 'center', fontFace: 'Calibri'
-        });
-      }
-      if(slide.notes) sld.addNotes(slide.notes);
-      return;
-    }
-
-    // ── QUOTE SLIDE ───────────────────────────────────────────────
-    if(layout === 'quote'){
-      sld.addShape(prs.ShapeType.rect, {
-        x: 0.5, y: 1.2, w: 0.1, h: 4.2,
-        fill: { color: OCEAN }
-      });
-      sld.addText('\u201C', {
-        x: 0.7, y: 0.8, w: 1, h: 1,
-        fontSize: 72, color: OCEAN, fontFace: 'Georgia', bold: true
-      });
-      sld.addText(slide.quote || slide.title || '', {
-        x: 0.9, y: 1.6, w: 10.5, h: 3,
-        fontSize: 22, color: '1A2A38', italic: true,
-        fontFace: 'Calibri', lineSpacingMultiple: 1.4
-      });
-      if(slide.attribution){
-        sld.addText('\u2014 ' + slide.attribution, {
-          x: 0.9, y: 4.8, w: 10, h: 0.4,
-          fontSize: 13, color: DGREY, fontFace: 'Calibri'
-        });
-      }
-      if(slide.notes) sld.addNotes(slide.notes);
-      return;
-    }
-
-    // ── STANDARD SLIDES ───────────────────────────────────────────
-    // Title bar background strip
-    sld.addShape(prs.ShapeType.rect, {
-      x: 0, y: 0.08, w: '100%', h: 1.15,
-      fill: { color: NAVY }
-    });
-    // Title
-    sld.addText(slide.title || '', {
-      x: 0.4, y: 0.15, w: 12, h: 1,
-      fontSize: 24, color: WHITE, bold: true,
-      fontFace: 'Calibri Light'
-    });
-
-    // ── TWO-COLUMN ────────────────────────────────────────────────
-    if(layout === 'two-column'){
-      var leftItems  = slide.left  || slide.bullets || [];
-      var rightItems = slide.right || [];
-
-      // Left column header
-      if(slide.leftTitle){
-        sld.addText(slide.leftTitle, {
-          x: 0.3, y: 1.45, w: 5.8, h: 0.4,
-          fontSize: 13, color: hexClean(ACCENT)||OCEAN, bold: true, fontFace: 'Calibri'
-        });
-      }
-      leftItems.forEach(function(pt, i){
-        sld.addShape(prs.ShapeType.ellipse, {
-          x: 0.35, y: (slide.leftTitle ? 2.0 : 1.55) + i*0.72, w: 0.15, h: 0.15,
-          fill: { color: OCEAN }
-        });
-        sld.addText(pt, {
-          x: 0.6, y: (slide.leftTitle ? 1.92 : 1.47) + i*0.72, w: 5.5, h: 0.62,
-          fontSize: 13.5, color: '1A2A38', fontFace: 'Calibri',
-          lineSpacingMultiple: 1.2, valign: 'middle'
-        });
-      });
-
-      // Divider
-      sld.addShape(prs.ShapeType.line, {
-        x: 6.4, y: 1.35, w: 0, h: 5.2,
-        line: { color: 'D0DCE8', width: 1 }
-      });
-
-      // Right column header
-      if(slide.rightTitle){
-        sld.addText(slide.rightTitle, {
-          x: 6.6, y: 1.45, w: 5.8, h: 0.4,
-          fontSize: 13, color: hexClean(ACCENT)||OCEAN, bold: true, fontFace: 'Calibri'
-        });
-      }
-      rightItems.forEach(function(pt, i){
-        sld.addShape(prs.ShapeType.ellipse, {
-          x: 6.65, y: (slide.rightTitle ? 2.0 : 1.55) + i*0.72, w: 0.15, h: 0.15,
-          fill: { color: OCEAN }
-        });
-        sld.addText(pt, {
-          x: 6.9, y: (slide.rightTitle ? 1.92 : 1.47) + i*0.72, w: 5.5, h: 0.62,
-          fontSize: 13.5, color: '1A2A38', fontFace: 'Calibri',
-          lineSpacingMultiple: 1.2, valign: 'middle'
-        });
-      });
-
-      if(slide.notes) sld.addNotes(slide.notes);
-      return;
-    }
-
-    // ── TITLE-CONTENT / BULLETS-ONLY ─────────────────────────────
-    var bullets = slide.bullets || slide.points || [];
-    bullets.forEach(function(pt, i){
-      // Bullet dot
-      sld.addShape(prs.ShapeType.ellipse, {
-        x: 0.35, y: 1.62 + i * 0.72, w: 0.15, h: 0.15,
-        fill: { color: OCEAN }
-      });
-      // Bullet text
-      sld.addText(pt, {
-        x: 0.62, y: 1.52 + i * 0.72, w: 12.0, h: 0.62,
-        fontSize: 14, color: '1A2A38', fontFace: 'Calibri',
-        lineSpacingMultiple: 1.2, valign: 'middle'
-      });
-    });
-
-    // Optional stat boxes
-    if(slide.stats && slide.stats.length){
-      var sw = 12.4 / slide.stats.length;
-      slide.stats.forEach(function(stat, i){
-        sld.addShape(prs.ShapeType.rect, {
-          x: 0.3 + i*(sw+0.15), y: 5.05, w: sw, h: 1.35,
-          fill: { color: 'EBF5FB' }, line: { color: 'B0D4E8', width: 1 }
-        });
-        sld.addText(stat.value || '', {
-          x: 0.3 + i*(sw+0.15), y: 5.1, w: sw, h: 0.65,
-          fontSize: 26, color: NAVY, bold: true, align: 'center', fontFace: 'Calibri'
-        });
-        sld.addText(stat.label || '', {
-          x: 0.3 + i*(sw+0.15), y: 5.75, w: sw, h: 0.55,
-          fontSize: 10, color: DGREY, align: 'center', fontFace: 'Calibri'
-        });
-      });
-    }
-
-    if(slide.notes) sld.addNotes(slide.notes);
-  });
-
-  // ── Download ─────────────────────────────────────────────────────
-  var fname = (jsonData.title || 'presentation').replace(/[^a-zA-Z0-9\s-]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0,50) + '.pptx';
-  prs.writeFile({ fileName: fname });
-  toast('\u2713 ' + fname + ' downloaded!');
-
-  // Show download button for re-download
+  var SERVER = 'http://127.0.0.1:7432';
   var btn = document.getElementById('pptxDownloadBtn');
-  if(btn){ btn.style.display = 'inline-block'; }
+  toast('\u23F3 Building PowerPoint\u2026');
+
+  fetch(SERVER, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'pptx', data: jsonData })
+  })
+  .then(function(r) {
+    if(!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    return r.blob();
+  })
+  .then(function(blob) {
+    var fname = (jsonData.title||'presentation').replace(/[^a-zA-Z0-9\s]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0,50)+'.pptx';
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
+    toast('\u2713 ' + fname + ' downloaded \u2014 opens in PowerPoint!');
+    if(btn) btn.style.display = 'inline-block';
+  })
+  .catch(function(e) {
+    console.error('PPTX error:', e);
+    toast('\u274C Server error: ' + e.message + '. Is the file server running?');
+  });
 }
 
 window._lastPptxData = null;
@@ -1779,31 +1575,9 @@ function downloadLastPptx(){
 // Parse AI response and trigger pptx build
 function tryBuildPptxFromResponse(text){
   if(_mode !== 'pptx') return false;
-  // Extract JSON from the response
-  var jsonStr = text.trim();
-  // Remove markdown code fences if present
-  jsonStr = jsonStr.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-  try {
-    var data = JSON.parse(jsonStr);
-    if(data && data.slides && data.slides.length){
-      window._lastPptxData = data;
-      buildPptx(data);
-      return true;
-    }
-  } catch(e) {
-    // Not pure JSON — try to extract JSON block
-    var match = text.match(/\{[\s\S]*"slides"\s*:\s*\[[\s\S]*\]\s*\}/);
-    if(match){
-      try {
-        var data2 = JSON.parse(match[0]);
-        if(data2 && data2.slides){
-          window._lastPptxData = data2;
-          buildPptx(data2);
-          return true;
-        }
-      } catch(e2) {}
-    }
-  }
+  var t = (text.trimStart().startsWith('{') ? '' : '{') + text;
+  var data = extractJSON(t, 'slides');
+  if(data){ window._lastPptxData = data; buildPptx(data); return true; }
   return false;
 }
 // ─────────────────────────────────────────────────────────────────
@@ -1827,273 +1601,32 @@ function wordPrompt(type) {
 }
 
 function buildWordDoc(jsonData) {
-  var D = window.docx;
-  if(!D){
-    // Library not loaded yet — try loading it
-    var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js';
-    s.onload = function(){ buildWordDoc(jsonData); };
-    s.onerror = function(){ toast('Word library unavailable. Try the PDF export instead.'); };
-    document.head.appendChild(s);
-    toast('Loading Word library\u2026');
-    return;
-  }
+  var SERVER = 'http://127.0.0.1:7432';
+  var btn = document.getElementById('wordDownloadBtn');
+  toast('\u23F3 Building Word document\u2026');
 
-  var title    = jsonData.title    || 'Document';
-  var subtitle = jsonData.subtitle || '';
-  var author   = jsonData.author   || 'Corverxis Technologies';
-  var date     = jsonData.date     || new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
-  var sections = jsonData.sections || [];
-
-  var NAVY  = '0F2645';
-  var OCEAN = '0099CC';
-  var GREY  = '5A84A8';
-  var BLACK = '1A2A38';
-  var WHITE = 'FFFFFF';
-  var LGREY = 'EBF5FB';
-
-  var B  = D.BorderStyle.SINGLE;
-  var bdr = function(c){ return {style:B,size:1,color:c||'D0DCE8'}; };
-  var borders = function(c){ return {top:bdr(c),bottom:bdr(c),left:bdr(c),right:bdr(c)}; };
-
-  var children = [];
-
-  // ── Cover header ────────────────────────────────────────────────
-  // Corverxis brand line
-  children.push(new D.Paragraph({
-    spacing:{after:60},
-    children:[new D.TextRun({text:'CORVERXIS TECHNOLOGIES',font:'Arial',size:16,color:OCEAN,characterSpacing:80})]
-  }));
-  // Title
-  children.push(new D.Paragraph({
-    spacing:{after:80},
-    border:{bottom:{style:B,size:12,color:OCEAN,space:6}},
-    children:[new D.TextRun({text:title,font:'Arial',size:52,bold:true,color:NAVY})]
-  }));
-  // Subtitle
-  if(subtitle){
-    children.push(new D.Paragraph({
-      spacing:{after:60},
-      children:[new D.TextRun({text:subtitle,font:'Arial',size:26,color:GREY})]
-    }));
-  }
-  // Meta line
-  children.push(new D.Paragraph({
-    spacing:{after:400},
-    children:[
-      new D.TextRun({text:author,font:'Arial',size:18,color:GREY}),
-      new D.TextRun({text:'  \u00b7  ',font:'Arial',size:18,color:GREY}),
-      new D.TextRun({text:date,font:'Arial',size:18,color:GREY})
-    ]
-  }));
-
-  // ── Sections ───────────────────────────────────────────────────
-  sections.forEach(function(sec){
-    var level = sec.level || 1;
-
-    // Heading
-    var hdgRun = new D.TextRun({
-      text: sec.heading || '',
-      font: 'Arial',
-      size: level===1 ? 32 : level===2 ? 26 : 22,
-      bold: true,
-      color: level===1 ? NAVY : level===2 ? OCEAN : BLACK
-    });
-    var hdgPara = new D.Paragraph({
-      heading: level===1 ? D.HeadingLevel.HEADING_1 : level===2 ? D.HeadingLevel.HEADING_2 : D.HeadingLevel.HEADING_3,
-      spacing:{before: level===1?320:200, after:100},
-      children:[hdgRun]
-    });
-    if(level===1){
-      hdgPara = new D.Paragraph({
-        spacing:{before:320,after:100},
-        border:{bottom:{style:B,size:6,color:OCEAN,space:4}},
-        children:[hdgRun]
-      });
-    }
-    children.push(hdgPara);
-
-    // Content paragraphs
-    if(sec.content && sec.content.trim()){
-      sec.content.trim().split(/\n\n+/).forEach(function(para){
-        para = para.trim();
-        if(!para) return;
-        // Handle inline bold **text**
-        var runs = [];
-        var parts = para.split(/\*\*([^*]+)\*\*/);
-        parts.forEach(function(p,i){
-          if(!p) return;
-          runs.push(new D.TextRun({text:p, font:'Arial', size:22, color:BLACK, bold:(i%2===1)}));
-        });
-        children.push(new D.Paragraph({
-          alignment: D.AlignmentType.JUSTIFIED,
-          spacing:{after:120},
-          children: runs.length ? runs : [new D.TextRun({text:para,font:'Arial',size:22,color:BLACK})]
-        }));
-      });
-    }
-
-    // Bullet list
-    if(sec.bullets && sec.bullets.length){
-      sec.bullets.forEach(function(b){
-        children.push(new D.Paragraph({
-          numbering:{reference:'bullets',level:0},
-          spacing:{after:60},
-          children:[new D.TextRun({text:b,font:'Arial',size:22,color:BLACK})]
-        }));
-      });
-      children.push(new D.Paragraph({spacing:{after:60},children:[new D.TextRun({text:'',font:'Arial',size:22})]}));
-    }
-
-    // Numbered list
-    if(sec.numbered && sec.numbered.length){
-      sec.numbered.forEach(function(n){
-        children.push(new D.Paragraph({
-          numbering:{reference:'numbers',level:0},
-          spacing:{after:60},
-          children:[new D.TextRun({text:n,font:'Arial',size:22,color:BLACK})]
-        }));
-      });
-      children.push(new D.Paragraph({spacing:{after:60},children:[new D.TextRun({text:'',font:'Arial',size:22})]}));
-    }
-
-    // Table
-    if(sec.table && sec.table.headers && sec.table.rows){
-      var colCount = sec.table.headers.length;
-      var colW = Math.floor(9360/colCount);
-      var colWidths = sec.table.headers.map(function(){ return colW; });
-
-      var rows = [];
-      // Header row
-      rows.push(new D.TableRow({
-        tableHeader:true,
-        children: sec.table.headers.map(function(h,ci){
-          return new D.TableCell({
-            borders:borders(NAVY),
-            shading:{fill:NAVY,type:D.ShadingType.CLEAR},
-            width:{size:colWidths[ci],type:D.WidthType.DXA},
-            margins:{top:80,bottom:80,left:120,right:120},
-            children:[new D.Paragraph({children:[new D.TextRun({text:h,font:'Arial',size:18,bold:true,color:WHITE})]})]
-          });
-        })
-      }));
-      // Data rows
-      sec.table.rows.forEach(function(row,ri){
-        rows.push(new D.TableRow({
-          children: row.map(function(cell,ci){
-            return new D.TableCell({
-              borders:borders('D0DCE8'),
-              shading:{fill:ri%2===0?WHITE:LGREY,type:D.ShadingType.CLEAR},
-              width:{size:colWidths[ci],type:D.WidthType.DXA},
-              margins:{top:80,bottom:80,left:120,right:120},
-              children:[new D.Paragraph({children:[new D.TextRun({text:String(cell||''),font:'Arial',size:20,color:BLACK})]})]
-            });
-          })
-        }));
-      });
-
-      children.push(new D.Table({
-        width:{size:9360,type:D.WidthType.DXA},
-        columnWidths:colWidths,
-        rows:rows
-      }));
-      children.push(new D.Paragraph({spacing:{after:120},children:[new D.TextRun({text:'',font:'Arial',size:22})]}));
-    }
-  });
-
-  // ── Footer note ─────────────────────────────────────────────────
-  children.push(new D.Paragraph({children:[new D.PageBreak()]}));
-  children.push(new D.Paragraph({
-    spacing:{before:200},
-    border:{top:{style:B,size:4,color:'D0DCE8',space:6}},
-    children:[new D.TextRun({
-      text:'Generated by NexGen Chat  \u00b7  Corverxis Technologies  \u00b7  '+date,
-      font:'Arial',size:16,color:GREY
-    })]
-  }));
-
-  // ── Build document ──────────────────────────────────────────────
-  var doc = new D.Document({
-    creator: 'NexGen Chat \u00b7 Corverxis Technologies',
-    title: title,
-    numbering:{
-      config:[
-        {reference:'bullets',levels:[{level:0,format:D.LevelFormat.BULLET,text:'\u2022',
-          alignment:D.AlignmentType.LEFT,
-          style:{paragraph:{indent:{left:720,hanging:360}}}}]},
-        {reference:'numbers',levels:[{level:0,format:D.LevelFormat.DECIMAL,text:'%1.',
-          alignment:D.AlignmentType.LEFT,
-          style:{paragraph:{indent:{left:720,hanging:360}}}}]}
-      ]
-    },
-    styles:{
-      default:{document:{run:{font:'Arial',size:22,color:BLACK}}},
-      paragraphStyles:[
-        {id:'Heading1',name:'Heading 1',basedOn:'Normal',next:'Normal',quickFormat:true,
-          run:{size:32,bold:true,font:'Arial',color:NAVY},
-          paragraph:{spacing:{before:320,after:100},outlineLevel:0}},
-        {id:'Heading2',name:'Heading 2',basedOn:'Normal',next:'Normal',quickFormat:true,
-          run:{size:26,bold:true,font:'Arial',color:OCEAN},
-          paragraph:{spacing:{before:200,after:80},outlineLevel:1}},
-        {id:'Heading3',name:'Heading 3',basedOn:'Normal',next:'Normal',quickFormat:true,
-          run:{size:22,bold:true,font:'Arial',color:BLACK},
-          paragraph:{spacing:{before:160,after:60},outlineLevel:2}}
-      ]
-    },
-    sections:[{
-      properties:{
-        page:{
-          size:{width:12240,height:15840},
-          margin:{top:1440,right:1440,bottom:1440,left:1440}
-        }
-      },
-      headers:{
-        default:new D.Header({children:[
-          new D.Paragraph({
-            spacing:{after:0},
-            border:{bottom:{style:B,size:6,color:OCEAN,space:3}},
-            children:[
-              new D.TextRun({text:title,font:'Arial',size:16,color:NAVY,bold:true}),
-              new D.TextRun({text:'\t',font:'Arial',size:16}),
-              new D.TextRun({text:'Corverxis Technologies',font:'Arial',size:16,color:GREY})
-            ],
-            tabStops:[{type:D.TabStopType.RIGHT,position:D.TabStopPosition.MAX}]
-          })
-        ]})
-      },
-      footers:{
-        default:new D.Footer({children:[
-          new D.Paragraph({
-            spacing:{before:0},
-            border:{top:{style:B,size:4,color:'D0DCE8',space:3}},
-            children:[
-              new D.TextRun({text:'Page ',font:'Arial',size:16,color:GREY}),
-              new D.TextRun({children:[D.PageNumber.CURRENT],font:'Arial',size:16,color:GREY}),
-              new D.TextRun({text:' of ',font:'Arial',size:16,color:GREY}),
-              new D.TextRun({children:[D.PageNumber.TOTAL_PAGES],font:'Arial',size:16,color:GREY}),
-              new D.TextRun({text:'\t'+date,font:'Arial',size:16,color:GREY})
-            ],
-            tabStops:[{type:D.TabStopType.RIGHT,position:D.TabStopPosition.MAX}]
-          })
-        ]})
-      },
-      children: children
-    }]
-  });
-
-  D.Packer.toBlob(doc).then(function(blob){
-    var fname = title.replace(/[^a-zA-Z0-9\s-]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0,50)+'.docx';
+  fetch(SERVER, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'docx', data: jsonData })
+  })
+  .then(function(r) {
+    if(!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    return r.blob();
+  })
+  .then(function(blob) {
+    var fname = (jsonData.title||'document').replace(/[^a-zA-Z0-9\s]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0,50)+'.docx';
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = fname;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
-    toast('\u2713 '+fname+' downloaded \u2014 opens in Word!');
-    var btn = document.getElementById('wordDownloadBtn');
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
+    toast('\u2713 ' + fname + ' \u2014 opens in Microsoft Word!');
     if(btn) btn.style.display = 'inline-block';
-  }).catch(function(e){
-    console.error('docx error:', e);
-    toast('Word error: '+e.message+'. Try again.');
+  })
+  .catch(function(e) {
+    console.error('Word error:', e);
+    toast('\u274C Server error: ' + e.message + '. Is the file server running?');
   });
 }
 
@@ -2104,15 +1637,62 @@ function downloadLastWord(){
 }
 function tryBuildWordFromResponse(text){
   if(_mode !== 'word') return false;
-  var jsonStr = text.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-  try {
-    var data = JSON.parse(jsonStr);
-    if(data && data.sections && data.sections.length){ window._lastWordData=data; buildWordDoc(data); return true; }
-  } catch(e){
-    var match = text.match(/\{[\s\S]*?"sections"\s*:\s*\[[\s\S]*?\]\s*\}/);
-    if(match){ try{ var d=JSON.parse(match[0]); if(d&&d.sections){ window._lastWordData=d; buildWordDoc(d); return true; } }catch(e2){} }
-  }
+  var t = (text.trimStart().startsWith('{') ? '' : '{') + text;
+  var data = extractJSON(t, 'sections');
+  if(data){ window._lastWordData = data; buildWordDoc(data); return true; }
   return false;
+}
+// ─────────────────────────────────────────────────────────────────
+
+
+// ── ROBUST JSON EXTRACTOR ─────────────────────────────────────────
+function extractJSON(text, requiredKey) {
+  // Strategy 1: strip fences, try direct parse
+  var clean = text
+    .replace(/^[\s\S]*?(?=\{)/,'')   // strip everything before first {
+    .replace(/\}\s*[\s\S]*$/,'}')    // strip everything after last }
+    .trim();
+
+  // Strategy 2: find the outermost { } block
+  var start = text.indexOf('{');
+  var end   = text.lastIndexOf('}');
+  if(start !== -1 && end > start){
+    var candidate = text.slice(start, end + 1);
+    try {
+      var d = JSON.parse(candidate);
+      if(d && requiredKey && d[requiredKey]) return d;
+      if(d && !requiredKey) return d;
+    } catch(e1) {
+      // Strategy 3: try to fix common AI JSON issues
+      var fixed = candidate
+        .replace(/,\s*\}/g,'}')          // trailing commas in objects
+        .replace(/,\s*\]/g,']')          // trailing commas in arrays
+        .replace(/(['"])?([a-zA-Z_][a-zA-Z0-9_]*)(['"])?\s*:/g,'"$2":') // unquoted keys
+        .replace(/:\s*'([^']*)'/g,':"$1"')  // single-quoted values
+        .replace(/\n/g,' ')               // newlines inside strings
+        .replace(/[\x00-\x1F\x7F]/g,' '); // control chars
+      try {
+        var d2 = JSON.parse(fixed);
+        if(d2 && requiredKey && d2[requiredKey]) return d2;
+        if(d2 && !requiredKey) return d2;
+      } catch(e2) {}
+    }
+  }
+
+  // Strategy 4: regex-extract required key block
+  if(requiredKey){
+    var re = new RegExp('\\\\{[\\\\s\\\\S]*?"' + requiredKey + '"\\\\s*:\\\\s*\\\\[[\\\\s\\\\S]*?\\\\]\\\\s*\\\\}');
+    var m  = text.match(re);
+    if(m){
+      try {
+        var d3 = JSON.parse(m[0]);
+        if(d3 && d3[requiredKey]) return d3;
+      } catch(e3){}
+    }
+  }
+
+  console.warn('extractJSON failed for key:', requiredKey, '| Raw length:', text.length, '| First 200:', text.slice(0,200));
+  return null;
 }
 // ─────────────────────────────────────────────────────────────────
 
@@ -2334,8 +1914,8 @@ function updateModeSystem() {
     chat:     '',
     vision:   'You are a Vision AI specialist. Analyse images with extreme detail and accuracy. Extract text, data, objects, and insights. Always structure your findings clearly with headers and bullet points.',
     graphics: 'You are a professional graphic designer and SVG expert. When creating graphics: always output complete, valid SVG code that renders correctly in browsers. Use professional colour palettes. For design briefs, be specific with hex codes, font names, spacing values and dimensions. When generating SVGs, make them visually polished and production-ready.',
-    pptx:     'You are a PowerPoint presentation expert. The user wants an actual .pptx file. Respond ONLY with a valid JSON object (no markdown, no explanation, just raw JSON). Use this exact structure:\n\n{"title":"Deck Title","theme":"navy","slides":[{"title":"Slide Title","layout":"title-content","bullets":["Point 1","Point 2","Point 3"],"notes":"Speaker notes here","accent":"#00C8FF"},{"title":"Slide 2","layout":"two-column","left":["Left col point 1","Left col point 2"],"right":["Right col point 1","Right col point 2"],"notes":"Notes"}]}\n\nLayouts: title-only, title-content, two-column, bullets-only, quote. Include 8-15 slides. Bullets max 6 words each. Be specific and professional.',
-    word:     'You are a professional business writer and document specialist. The user wants an actual .docx Word document. Respond ONLY with a valid JSON object (no markdown, no explanation, just raw JSON). Use this exact structure: {"title":"Document Title","subtitle":"Optional subtitle","author":"Author Name","date":"Date","sections":[{"heading":"Section Heading","level":1,"content":"Full paragraph text here. Write complete, professional prose.","bullets":[]},{"heading":"Subsection","level":2,"content":"","bullets":["Bullet point 1","Bullet point 2"]}]}. Include 4-8 sections. Write full professional content, not placeholders. Bullets array can be empty [] if using content prose instead.',
+    pptx:     'You are a JSON generator. You output nothing but raw JSON. You do not ask questions. You do not explain. You do not greet. You do not say anything before or after the JSON. You take any presentation request and immediately write all slide content as JSON. Use assumptions where details are missing — never ask for more information. Respond with this exact structure and nothing else: {"title":"Presentation Title","theme":"navy","slides":[{"title":"Slide Title","layout":"title-content","bullets":["First key point","Second key point","Third key point"],"notes":"Speaker notes here"},{"title":"Details","layout":"two-column","left":["Left point one","Left point two"],"right":["Right point one","Right point two"],"notes":"Notes"}]}. Include 8-12 slides. Bullet points max 7 words each. Layouts: title-content, two-column, bullets-only, quote, title-only. START YOUR RESPONSE WITH { AND END WITH }. NOTHING ELSE.',
+    word:     'You are a JSON generator. You output nothing but raw JSON. You do not ask questions. You do not explain. You do not greet. You do not say anything before or after the JSON. You take any document request and immediately write the full document as JSON. Use assumptions where details are missing — never ask for more information. Respond with this exact structure and nothing else: {"title":"Document Title","subtitle":"Subtitle","author":"Corverxis Technologies","date":"June 2025","sections":[{"heading":"Executive Summary","level":1,"content":"Write 2-3 full professional sentences here.","bullets":[]},{"heading":"Section Two","level":2,"content":"","bullets":["Bullet one","Bullet two","Bullet three"]}]}. Write 5-8 sections with real professional content based on the user request. START YOUR RESPONSE WITH { AND END WITH }. NOTHING ELSE.',
     kb:       'You are a knowledge management specialist. Structure all outputs as well-organised knowledge bases with clear categories, headers, and searchable content. Always include: a master index, categorised sections, and actionable quick-reference cards.'
   }[_mode] || '';
 }
