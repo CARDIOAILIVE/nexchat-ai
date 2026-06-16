@@ -536,7 +536,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
         </div>
         <button class="auth-btn" id="aBtnUp" onclick="doSignUp()">Create Account &#x2192;</button>
         <div class="auth-note">
-          Free plan: 3 chats, no credit card required<br>
+          Free plan: 20 NexGen Flash prompts/month, no credit card required<br>
           <span style="margin-top:4px;display:block">Already have an account? <span class="auth-link" onclick="authTab('in')">Sign in</span></span>
         </div>
       </div>
@@ -549,30 +549,24 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   <div class="upgrade-card">
     <svg width="40" height="40" viewBox="0 0 28 28" fill="none" style="margin-bottom:14px"><polygon points="14,2 24,7.5 24,20.5 14,26 4,20.5 4,7.5" stroke="#00C8FF" stroke-width="1.5" fill="none"/><polygon points="14,7 20,10.5 20,17.5 14,21 8,17.5 8,10.5" stroke="#00C8FF" stroke-width="1" fill="none" opacity=".6"/><circle cx="14" cy="14" r="2.5" fill="#00C8FF"/></svg>
     <div style="font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:3px;margin-bottom:8px">UPGRADE YOUR PLAN</div>
-    <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-.5px">You've used your 3 free chats</div>
-    <div style="font-size:13px;color:var(--dim);line-height:1.8;margin-bottom:4px">Subscribe to keep chatting with NexGen AI — choose the plan that fits you.</div>
+    <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-.5px">You've used all 20 free Flash prompts this month</div>
+    <div style="font-size:13px;color:var(--dim);line-height:1.8;margin-bottom:4px">Need more speed and quality? Upgrade to NexGen Pro or NexGen Ultra to keep chatting — or wait for your free prompts to renew next month.</div>
     <div class="upgrade-plans">
-      <div class="uplan">
-        <div class="uplan-name">Flash</div>
-        <div class="uplan-price" style="color:var(--flash)">$9<sub>/mo</sub></div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Flash model<br>200K tokens/day</div>
-        <button class="uplan-btn outline" onclick="upgradeTo('flash')">Subscribe</button>
-      </div>
       <div class="uplan featured">
         <div style="font-family:var(--mono);font-size:7px;color:var(--accent);letter-spacing:1.5px;margin-bottom:4px">POPULAR</div>
         <div class="uplan-name">Pro</div>
         <div class="uplan-price">$15<sub>/mo</sub></div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Pro model<br>1M tokens/day</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Faster, smarter NexGen Pro<br>1M tokens/day</div>
         <button class="uplan-btn solid" onclick="upgradeTo('pro')">Subscribe</button>
       </div>
       <div class="uplan">
         <div class="uplan-name">Ultra</div>
         <div class="uplan-price" style="color:var(--ultra)">$25<sub>/mo</sub></div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Ultra model<br>5M tokens/day</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Maximum speed & quality<br>5M tokens/day</div>
         <button class="uplan-btn outline" onclick="upgradeTo('ultra')">Subscribe</button>
       </div>
     </div>
-    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px">Need more time? <span style="color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="document.getElementById('upgradeWall').style.display='none'">Continue browsing</span> (no more chats available)</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px">Your 20 free Flash prompts renew at the start of next month. <span style="color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="document.getElementById('upgradeWall').style.display='none'">Continue browsing</span></div>
   </div>
 </div>
 
@@ -594,7 +588,7 @@ var STRIPE = {
   pro:   'https://buy.stripe.com/14AeVdgRA6Dr5ePdjI1oI0d',
   ultra: 'https://buy.stripe.com/3cI3cv30K0f3cHhbbA1oI0e'
 };
-var FREE_MSG_LIMIT = 3;
+var FREE_MSG_LIMIT = 20; // per calendar month
 
 var SUPA_URL = 'https://bvwgqafekmfqpylsrteu.supabase.co';
 var SUPA_KEY = 'sb_publishable_giKFkcglGwHs2ezDp0UsKQ_tmZ3QJis';
@@ -653,7 +647,8 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 // ── FREE USAGE HELPERS ────────────────────────────────────────────
-function freeKey(){ return _user ? 'nxc_free_used_'+_user.id : 'nxc_free_used_guest'; }
+function currentMonthKey(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1); }
+function freeKey(){ return (_user ? 'nxc_free_used_'+_user.id : 'nxc_free_used_guest') + '_' + currentMonthKey(); }
 function getFreeUsed(){ return parseInt(localStorage.getItem(freeKey())||'0'); }
 function incFreeUsed(){ localStorage.setItem(freeKey(), getFreeUsed()+1); }
 function onSignedIn(user){
@@ -1108,8 +1103,8 @@ async function callNexGen(text, img){
       var remaining = FREE_MSG_LIMIT - getFreeUsed();
       if(remaining <= 0){
         document.getElementById('upgradeWall').style.display='flex';
-      } else {
-        toast('\u{1F4AC} '+remaining+' free chat'+(remaining===1?'':'s')+' remaining');
+      } else if(remaining <= 5){
+        toast('\u26A1 '+remaining+' free Flash prompt'+(remaining===1?'':'s')+' left this month');
       }
     }
     document.getElementById('footerInfo').textContent = MODELS[_model].label + ' \u00b7 ready';
