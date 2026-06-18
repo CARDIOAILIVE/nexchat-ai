@@ -535,6 +535,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
           </div>
         </div>
         <button class="auth-btn" id="aBtnUp" onclick="doSignUp()">Create Account &#x2192;</button>
+        <div id="privacyConsentRow" style="display:flex;align-items:flex-start;gap:8px;margin:10px 0 4px;padding:10px 12px;border-radius:8px;background:rgba(0,200,255,.04);border:1px solid rgba(0,200,255,.12);transition:border-color .2s">
+          <input type="checkbox" id="privacyConsent" style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
+          <label for="privacyConsent" style="font-size:11px;color:var(--dim);line-height:1.6;cursor:pointer">
+            I have read and agree to the
+            <span onclick="openPrivacyModal(event)" style="color:var(--accent);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Privacy Policy &amp; Terms of Service</span>
+          </label>
+        </div>
         <div class="auth-note">
           Free plan: 5 NexGen Flash prompts/month, no credit card required<br>
           <span style="margin-top:4px;display:block">Already have an account? <span class="auth-link" onclick="authTab('in')">Sign in</span></span>
@@ -567,6 +574,118 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
       </div>
     </div>
     <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px">Your 5 free Flash prompts renew at the start of next month. <span style="color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="document.getElementById('upgradeWall').style.display='none'">Continue browsing</span></div>
+  </div>
+</div>
+
+<!-- ── PRIVACY POLICY MODAL ── -->
+<div id="privacyModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(5,15,30,.92);backdrop-filter:blur(16px);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#0a1628;border:1px solid rgba(0,200,255,.2);border-radius:16px;width:100%;max-width:680px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6)">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid rgba(0,200,255,.1);flex-shrink:0">
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:3px;margin-bottom:4px">CORVERXIS TECHNOLOGIES</div>
+        <div style="font-size:17px;font-weight:700;color:var(--text)">Privacy Policy &amp; Terms of Service</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">NexGen Chat &nbsp;·&nbsp; Effective June 2025</div>
+      </div>
+      <button onclick="closePrivacyModal()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--muted);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">&times;</button>
+    </div>
+    <!-- Scrollable body -->
+    <div style="overflow-y:auto;padding:24px;font-size:12.5px;color:var(--dim);line-height:1.8;flex:1">
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">1. ABOUT THIS POLICY</div>
+      <p style="margin:0 0 16px">This Privacy Policy and Terms of Service ("Agreement") governs your use of NexGen Chat, an AI-powered assistant platform operated by Corverxis Technologies ("we", "us", "our"). By creating an account, you confirm you have read, understood, and agreed to this Agreement in full. If you do not agree, do not create an account or use the service.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">2. INFORMATION WE COLLECT</div>
+      <p style="margin:0 0 8px">We collect the following categories of information:</p>
+      <ul style="margin:0 0 16px;padding-left:18px">
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Account data</strong> — name, email address, password (hashed), and plan selection provided at sign-up.</li>
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Usage data</strong> — number of prompts used per month, selected AI model, session timestamps, and feature interactions (e.g. XAI mode, export actions).</li>
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Conversation content</strong> — messages you send and responses generated are transmitted to the AI provider (Anthropic) to fulfil your request. We do not permanently store conversation content on our servers by default.</li>
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Location data</strong> — if you grant permission, approximate GPS coordinates and reverse-geocoded city name are used solely to provide local weather and timezone context in your session. This data is not stored after your session ends.</li>
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Device &amp; technical data</strong> — browser type, operating system, IP address, and approximate timezone for security and abuse prevention.</li>
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Payment data</strong> — billing is processed by Stripe (web) or Apple (iOS). We do not store card numbers or payment instrument details.</li>
+      </ul>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">3. HOW WE USE YOUR INFORMATION</div>
+      <p style="margin:0 0 8px">We use your information to:</p>
+      <ul style="margin:0 0 16px;padding-left:18px">
+        <li style="margin-bottom:4px">Create and maintain your account and authenticate your sessions.</li>
+        <li style="margin-bottom:4px">Enforce free-tier limits and apply your paid subscription entitlements.</li>
+        <li style="margin-bottom:4px">Transmit your prompts to Anthropic's API to generate AI responses.</li>
+        <li style="margin-bottom:4px">Provide local weather and timezone context when location permission is granted.</li>
+        <li style="margin-bottom:4px">Process payments and manage subscription status via Stripe or Apple.</li>
+        <li style="margin-bottom:4px">Send transactional emails (account confirmation, password reset). We do not send marketing email without your explicit consent.</li>
+        <li style="margin-bottom:4px">Detect abuse, fraud, and security threats.</li>
+        <li style="margin-bottom:4px">Improve the platform through aggregated, de-identified analytics.</li>
+      </ul>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">4. AI-GENERATED CONTENT</div>
+      <p style="margin:0 0 16px">NexGen Chat uses large language models (LLMs) provided by Anthropic. AI-generated responses are produced automatically and may be inaccurate, incomplete, or outdated. You are solely responsible for verifying any information before acting on it. Content generated by the AI does not constitute professional, medical, legal, or financial advice. Corverxis Technologies accepts no liability for decisions made based on AI output.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">5. DATA SHARING &amp; THIRD PARTIES</div>
+      <p style="margin:0 0 8px">We share your data only as necessary:</p>
+      <ul style="margin:0 0 16px;padding-left:18px">
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Anthropic</strong> — receives your prompt text to generate responses, subject to <a href="https://www.anthropic.com/legal/privacy" target="_blank" style="color:var(--accent)">Anthropic's Privacy Policy</a>.</li>
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Supabase</strong> — hosts authentication and account metadata under SOC 2 Type II certification.</li>
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Stripe / Apple</strong> — process payments under their respective privacy policies.</li>
+        <li style="margin-bottom:4px"><strong style="color:var(--text)">Open-Meteo / OpenStreetMap</strong> — receive your coordinates (if location is permitted) to return weather and city name data. No personal identifiers are sent.</li>
+        <li style="margin-bottom:4px">We do not sell, rent, or trade your personal data to any third party for marketing purposes.</li>
+      </ul>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">6. DATA RETENTION</div>
+      <p style="margin:0 0 16px">Account data is retained while your account is active. You may request deletion at any time by contacting us at <span style="color:var(--accent)">privacy@corverxis.com</span>. Upon deletion, your account data is removed within 30 days. Location data is session-only and never persisted. Conversation content is not stored on our servers after transmission to the AI provider.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">7. SECURITY</div>
+      <p style="margin:0 0 16px">We implement industry-standard security measures including TLS encryption in transit, hashed password storage via Supabase Auth (bcrypt), and token-based session management. No system is perfectly secure; we will notify you of any breach affecting your personal data as required by applicable law.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">8. YOUR RIGHTS</div>
+      <p style="margin:0 0 8px">Depending on your jurisdiction, you may have the right to:</p>
+      <ul style="margin:0 0 16px;padding-left:18px">
+        <li style="margin-bottom:4px">Access, correct, or delete your personal data.</li>
+        <li style="margin-bottom:4px">Restrict or object to processing.</li>
+        <li style="margin-bottom:4px">Data portability (receive a copy of your data in a machine-readable format).</li>
+        <li style="margin-bottom:4px">Withdraw consent at any time (which will not affect lawfulness of prior processing).</li>
+        <li style="margin-bottom:4px">Lodge a complaint with a supervisory authority (EU/UK users: your local data protection authority; US users: the FTC or your state AG).</li>
+      </ul>
+      <p style="margin:0 0 16px">To exercise these rights, contact us at <span style="color:var(--accent)">privacy@corverxis.com</span>.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">9. COOKIES &amp; LOCAL STORAGE</div>
+      <p style="margin:0 0 16px">NexGen Chat uses browser localStorage to store your session state, free-tier usage count, and conversation history locally on your device. No third-party advertising cookies are used. We do not use cross-site tracking.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">10. SUBSCRIPTIONS &amp; BILLING</div>
+      <p style="margin:0 0 16px">Paid plans (Flash $9/mo, Pro $15/mo, Ultra $25/mo) are billed monthly in advance. Free-tier users receive 5 NexGen Flash prompts per calendar month. Subscriptions auto-renew unless cancelled before the renewal date. Refunds are not provided for partial months. On iOS, subscriptions are managed through your Apple ID and subject to Apple's billing terms. On web, billing is managed through Stripe. To cancel, manage your subscription through your Apple ID settings (iOS) or contact <span style="color:var(--accent)">billing@corverxis.com</span> (web).</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">11. ACCEPTABLE USE</div>
+      <p style="margin:0 0 8px">You agree not to use NexGen Chat to:</p>
+      <ul style="margin:0 0 16px;padding-left:18px">
+        <li style="margin-bottom:4px">Generate content that is illegal, harmful, abusive, defamatory, or violates any third-party rights.</li>
+        <li style="margin-bottom:4px">Attempt to circumvent free-tier limits, reverse engineer the platform, or access it through automated means.</li>
+        <li style="margin-bottom:4px">Share API keys, account credentials, or circumvent authentication.</li>
+        <li style="margin-bottom:4px">Use the service in any way that violates Anthropic's usage policies.</li>
+      </ul>
+      <p style="margin:0 0 16px">We reserve the right to suspend or terminate accounts that violate these terms without refund.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">12. LIMITATION OF LIABILITY</div>
+      <p style="margin:0 0 16px">To the maximum extent permitted by law, Corverxis Technologies shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of NexGen Chat. Our total liability to you for any claims arising from this Agreement shall not exceed the amount you paid us in the 12 months preceding the claim.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">13. GOVERNING LAW</div>
+      <p style="margin:0 0 16px">This Agreement is governed by the laws of the State of Delaware, United States, without regard to its conflict-of-law provisions. Any disputes shall be resolved exclusively in the state or federal courts located in Delaware.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">14. CHANGES TO THIS POLICY</div>
+      <p style="margin:0 0 16px">We may update this Agreement from time to time. We will notify you of material changes by email or an in-app notice. Continued use of the platform after changes take effect constitutes acceptance of the updated Agreement.</p>
+
+      <div style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:6px">15. CONTACT</div>
+      <p style="margin:0 0 4px">For privacy or legal inquiries:</p>
+      <p style="margin:0 0 4px;color:var(--text)">Corverxis Technologies</p>
+      <p style="margin:0 0 4px">Email: <span style="color:var(--accent)">privacy@corverxis.com</span></p>
+      <p style="margin:0">Legal: <span style="color:var(--accent)">legal@corverxis.com</span></p>
+
+    </div>
+    <!-- Footer -->
+    <div style="padding:16px 24px;border-top:1px solid rgba(0,200,255,.1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-size:11px;color:var(--muted)">Last updated: June 2025 &nbsp;·&nbsp; Version 1.0</div>
+      <button onclick="agreeAndClosePrivacy()" style="padding:9px 22px;background:var(--accent);color:#001833;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--mono);letter-spacing:.5px">I Agree &amp; Close &#x2713;</button>
+    </div>
   </div>
 </div>
 
@@ -744,6 +863,26 @@ async function doSignIn(){
   if(r.data && r.data.user) onSignedIn(r.data.user);
   else document.getElementById('authWall').style.display = 'none';
 }
+// ── PRIVACY MODAL ─────────────────────────────────────────────────
+function openPrivacyModal(e){
+  if(e) e.stopPropagation();
+  document.getElementById('privacyModal').style.display='flex';
+}
+function closePrivacyModal(){
+  document.getElementById('privacyModal').style.display='none';
+}
+function agreeAndClosePrivacy(){
+  document.getElementById('privacyConsent').checked = true;
+  var row = document.getElementById('privacyConsentRow');
+  row.style.borderColor = 'rgba(0,200,255,.4)';
+  closePrivacyModal();
+}
+// Close modal on backdrop click
+document.addEventListener('click', function(e){
+  var modal = document.getElementById('privacyModal');
+  if(modal && modal.style.display==='flex' && e.target===modal) closePrivacyModal();
+});
+
 async function doSignUp(){
   aErr('aErrUp','');
   var name  = document.getElementById('suName').value.trim();
@@ -753,9 +892,22 @@ async function doSignUp(){
   if(!name){ aErr('aErrUp','Enter your full name'); return; }
   if(!email.includes('@')){ aErr('aErrUp','Enter a valid email'); return; }
   if(pass.length<6){ aErr('aErrUp','Password must be at least 6 characters'); return; }
+  // ── Privacy consent required ──
+  var consentBox = document.getElementById('privacyConsent');
+  if(!consentBox || !consentBox.checked){
+    aErr('aErrUp','Please agree to the Privacy Policy and Terms of Service to continue');
+    var row = document.getElementById('privacyConsentRow');
+    if(row){
+      row.style.borderColor='rgba(255,80,80,.6)';
+      row.style.background='rgba(255,80,80,.06)';
+      setTimeout(function(){ row.style.borderColor='rgba(0,200,255,.12)'; row.style.background='rgba(0,200,255,.04)'; }, 2500);
+    }
+    return;
+  }
   aBtnLoad('aBtnUp',true);
+  var consentTimestamp = new Date().toISOString();
   var r = await getSB().auth.signUp({email:email, password:pass,
-    options:{data:{full_name:name, plan:plan}, emailRedirectTo:window.location.href}});
+    options:{data:{full_name:name, plan:plan, privacy_agreed:true, privacy_agreed_at:consentTimestamp, privacy_version:'1.0'}, emailRedirectTo:window.location.href}});
   aBtnLoad('aBtnUp',false);
   if(r.error){
     var msg = r.error.message;
